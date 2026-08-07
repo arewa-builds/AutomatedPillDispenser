@@ -40,4 +40,18 @@ edge/         Python vision + telemetry
 databricks/   PySpark / Delta Lake notebooks
 ml/           MLflow adherence models
 docs/         Architecture, schedule, BOM
+docker/       Container entrypoint
+Dockerfile / docker-compose.yml
 ```
+
+## Docker
+
+Prefer the containerized software-first path when changing edge or medallion code:
+
+```bash
+docker compose build
+docker compose run --rm app smoke
+docker compose run --rm medallion
+```
+
+See `docs/docker.md`.

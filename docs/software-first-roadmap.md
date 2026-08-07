@@ -23,10 +23,10 @@ You can complete a large share of Weeks 2–5 before the Arduino kit arrives. Us
 
 ## Suggested daily loop (pre-purchase)
 
-1. Run `edge/pipeline.py --mode mock` and confirm face → mock dispense → tray verify.  
+1. Run the containerized smoke test: `docker compose run --rm app smoke` (or host `edge/pipeline.py --mode mock`).  
 2. Tune HSV/contour thresholds for your candy under desk lighting.  
 3. Review `firmware/pill_dispenser/pill_dispenser.ino` pin map against the BOM you will order.  
-4. Generate a week of synthetic telemetry and run `databricks/local_medallion.py`.  
+4. Generate a week of synthetic telemetry: `docker compose run --rm medallion`.  
 
 ## Parts order (when ready)
 
