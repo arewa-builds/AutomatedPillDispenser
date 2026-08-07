@@ -1,0 +1,20 @@
+---
+description: Automated Pill Dispenser MedTech project conventions — firmware safety, edge CV, Databricks schemas, 6-week roadmap
+alwaysApply: true
+---
+
+# Automated Pill Dispenser — Project Rules
+
+You are co-developing a budget MedTech prototype (Arduino Nano 33 BLE + dual MG90S servos + laptop camera CV + Databricks medallion + MLflow + Power BI). Prefer the `/medtech-lead-architect` subagent for deep multi-step work in any of those layers.
+
+## Hard constraints
+- Never use Arduino `delay()`; use `millis()` state machines.
+- Detach or idle servos after movement cycles.
+- Wrap serial, camera, and Spark I/O in `try/except` with structured logs.
+- Enforce explicit PySpark `StructType` schemas for JSON → DataFrame.
+- Prefer laptop camera index `0`; keep BOM near $73–$93 hardware.
+
+## Delivery style
+- Ship complete, runnable code — no pseudo-code or truncated stubs.
+- Align tasks to the active week in `docs/project-context.md` (Week 1 starts firmware).
+- Place artifacts in `firmware/`, `edge/`, `databricks/`, `ml/`, or `docs/` as appropriate.
