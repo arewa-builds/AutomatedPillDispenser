@@ -41,10 +41,29 @@ It encodes the Lead Technical Co-Developer persona (firmware, vision, Databricks
 
 ## Current status
 
-**Ready for Week 1** — Arduino C++ firmware & hardware testing (non-blocking servo control, pinout, Serial dispense commands).
+**Software-first track active** — no Arduino required yet. You can develop vision, mock hardware, telemetry, and local medallion transforms on a laptop now. Firmware is compile-ready for when parts arrive.
+
+## Run now (no hardware)
+
+```bash
+# Edge mock pipeline (laptop camera) or headless smoke
+cd edge
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python pipeline.py --mode mock --headless
+
+# Synthetic Bronze -> Silver -> Gold (local)
+cd ../databricks
+python3 generate_synthetic_telemetry.py
+python3 local_medallion.py
+```
+
+See [`docs/software-first-roadmap.md`](docs/software-first-roadmap.md).
 
 ## Quick links
 
 - Product brief: [`project.md`](project.md)
 - Full schedule & BOM: [`docs/project-context.md`](docs/project-context.md)
+- Software-first plan: [`docs/software-first-roadmap.md`](docs/software-first-roadmap.md)
+- Edge docs: [`edge/README.md`](edge/README.md)
 - Agent guide: [`AGENTS.md`](AGENTS.md)

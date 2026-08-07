@@ -1,0 +1,15 @@
+event_ts_utc,patient_id,face_match_confidence,pills_detected,dispense_latency_ms,event_status,hardware_source,retry_count,is_success,scheduled_window,time_drift_minutes
+2026-08-24T08:01:21Z,patient_demo_001,0.7861,1,565,success,mock,0,True,morning,1.35
+2026-08-24T20:01:26Z,patient_demo_001,0.8794,1,345,success,mock,0,True,evening,1.43
+2026-08-25T08:03:11Z,patient_demo_001,0.7272,1,687,success,serial,0,True,morning,3.18
+2026-08-25T20:03:28Z,patient_demo_001,0.9547,1,606,success,serial,0,True,evening,3.47
+2026-08-26T08:06:43Z,patient_demo_001,0.9261,1,489,success,mock,0,True,morning,6.72
+2026-08-26T20:06:48Z,patient_demo_001,0.883,1,368,success,serial,0,True,evening,6.8
+2026-08-27T08:10:08Z,patient_demo_001,0.7413,1,880,success,serial,0,True,morning,10.13
+2026-08-27T20:10:13Z,patient_demo_001,0.8985,1,872,retry,mock,1,True,evening,10.22
+2026-08-28T08:12:12Z,patient_demo_001,0.9452,1,613,success,serial,0,True,morning,12.2
+2026-08-28T20:12:45Z,patient_demo_001,0.9729,1,426,success,mock,0,True,evening,12.75
+2026-08-29T08:16:08Z,patient_demo_001,0.8225,1,1590,success,mock,0,True,morning,16.13
+2026-08-29T20:16:27Z,patient_demo_001,0.7351,1,345,success,serial,0,True,evening,16.45
+2026-08-30T08:18:51Z,patient_demo_001,0.9746,1,924,success,mock,0,True,morning,18.85
+2026-08-30T20:19:23Z,patient_demo_001,0.8936,1,572,success,serial,0,True,evening,19.38

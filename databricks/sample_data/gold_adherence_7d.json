@@ -1,0 +1,10 @@
+[
+  {
+    "patient_id": "patient_demo_001",
+    "events": 14,
+    "success_events": 14,
+    "adherence_rate_7d": 1.0,
+    "avg_time_drift_minutes": 9.93,
+    "high_adherence_risk": false
+  }
+]
