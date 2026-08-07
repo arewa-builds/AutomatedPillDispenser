@@ -2,7 +2,19 @@
 
 Python edge stack for face gating, mock/serial dispense, pill verification, and Bronze-ready JSONL logs.
 
-## Setup (laptop)
+## Docker (project-wide)
+
+From the repo root:
+
+```bash
+docker compose build
+docker compose run --rm app smoke
+docker compose run --rm app edge --mode mock --headless
+```
+
+See [`docs/docker.md`](../docs/docker.md). Container installs use `requirements-docker.txt` (`opencv-python-headless`).
+
+## Setup (laptop host venv)
 
 ```bash
 cd edge

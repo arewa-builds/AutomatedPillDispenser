@@ -1,0 +1,89 @@
+# Automated Pill Dispenser — containerized software-first stack
+#
+# Quick start:
+#   docker compose build
+#   docker compose run --rm app smoke
+#   docker compose run --rm medallion
+#
+# With laptop camera (Linux host):
+#   docker compose --profile camera run --rm --build edge-camera
+#
+# With Arduino serial later:
+#   docker compose --profile serial run --rm edge-serial
+
+name: automated-pill-dispenser
+
+x-app-image: &app_image
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: automated-pill-dispenser:latest
+
+x-app-volumes: &app_volumes
+  - ./edge/logs:/app/edge/logs
+  - ./databricks/sample_data:/app/databricks/sample_data
+
+services:
+  # Default: headless mock edge smoke (no camera / no Arduino)
+  app:
+    <<: *app_image
+    container_name: apd-app
+    working_dir: /app
+    volumes: *app_volumes
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APD_RUNTIME=docker
+    command: ["smoke"]
+
+  # One-shot local medallion transform
+  medallion:
+    <<: *app_image
+    container_name: apd-medallion
+    volumes: *app_volumes
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["medallion"]
+
+  # Interactive shell for exploration / debugging
+  shell:
+    <<: *app_image
+    container_name: apd-shell
+    volumes:
+      - ./:/app
+      - ./edge/logs:/app/edge/logs
+      - ./databricks/sample_data:/app/databricks/sample_data
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    command: ["shell"]
+    profiles: ["dev"]
+
+  # Optional: pass through host camera (/dev/video0)
+  edge-camera:
+    <<: *app_image
+    container_name: apd-edge-camera
+    volumes: *app_volumes
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APD_RUNTIME=docker
+    devices:
+      - /dev/video0:/dev/video0
+    group_add:
+      - video
+    # Headless by default inside container (no X11). For GUI, use host venv instead.
+    command: ["edge", "--mode", "mock", "--headless"]
+    profiles: ["camera"]
+
+  # Optional: pass through Arduino USB serial when hardware arrives
+  edge-serial:
+    <<: *app_image
+    container_name: apd-edge-serial
+    volumes: *app_volumes
+    environment:
+      - PYTHONUNBUFFERED=1
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    group_add:
+      - dialout
+    command: ["edge", "--mode", "serial", "--port", "/dev/ttyACM0", "--headless"]
+    profiles: ["serial"]

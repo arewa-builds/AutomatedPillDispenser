@@ -17,3 +17,7 @@ edge/logs/
 # Arduino / PlatformIO build artifacts
 firmware/**/build/
 .pio/
+
+# Docker
+*.tar
+.docker-cache/
