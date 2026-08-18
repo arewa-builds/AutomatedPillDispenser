@@ -1,56 +1,67 @@
-# CAD — Explore Housing, Carousel & Latch
+# CAD — Full Printable Prototype Set
 
-Parametric OpenSCAD examples for the Automated Pill Dispenser. Use `/cad-embedded-hardware` to iterate; open these files in [OpenSCAD](https://openscad.org/) to explore.
-
-## Quick start — explore the assembly
-
-1. Install OpenSCAD.
-2. Open `assembly_preview.scad`.
-3. Press **F5** (preview).
-4. Toggle at the top of the file:
-   - `EXPLODED = true;` — parts separated (easiest to study)
-   - `EXPLODED = false;` — seated stack
-
-| Color | Part | What you’re looking at |
-| :--- | :--- | :--- |
-| Blue | **A** Housing | Nano, LiPo/TP4056, carousel servo well, 45° chute, camera lip |
-| Orange | **B** Plate | 100 mm drop floor, center shaft hole, 20×15 mm drop slot |
-| Green | **C** Carousel | 98 mm drum, 8 pockets, servo-horn press-fit hub |
-| Red | **D** Latch | Sliding gate over drop hole + side MG90S hint |
-
-## Printable part files
-
-| File | Export STL to | Print notes |
-| :--- | :--- | :--- |
-| `part_a_base_enclosure.scad` | `stl/part_a_base_enclosure.stl` | Flat on bottom; light supports under chute if needed |
-| `part_b_base_plate.scad` | `stl/part_b_base_plate.stl` | Flat; no supports |
-| `part_c_carousel.scad` | `stl/part_c_carousel.stl` | Flat on open bottom; no supports; press onto MG90S horn |
-| `part_d_latch_gate.scad` | `stl/part_d_latch_gate.stl` | Set `BUILD="gate"` / `"arm"` / `"both"`; print flat |
-
-**Export:** Open part → **F6** (render) → **File → Export → Export as STL…**
-
-Shared dimensions live in `parameters.scad` (edit once, all parts update after reload).
-
-## Hardware these models fit
-
-- Arduino Nano 33 BLE — 45×18×7 mm + USB cutout (−Y wall on Part A)
-- MG90S ×2 — 22.8×12.2×28.5 mm (center carousel + side latch)
-- LiPo 500 mAh — 30×20×6 mm pocket; TP4056 USB-C on +X wall
-
-Firmware pins when assembling: carousel **D9**, latch **D10**.
-
-## Preview images
-
-Ready-made screenshots (also under `previews/`):
-
-- `previews/assembly_preview.png` — exploded stack  
-- `previews/part_a_base_enclosure.png` — housing  
-- `previews/part_b_base_plate.png` — drop plate  
-- `previews/part_c_carousel.png` — carousel  
-- `previews/part_d_latch_gate.png` — gate + servo arm + bracket  
-
-Exported example meshes are in `stl/` (regenerate anytime with OpenSCAD `-o`).
+Parametric **OpenSCAD** sources, **STL** meshes, and **PNG** previews for an adequate Automated Pill Dispenser mechanical prototype.
 
 ## Expert agent
 
-`/cad-embedded-hardware` — refine tolerances, add screw bosses, change pocket count, or regenerate STLs after you dry-fit real parts.
+`/cad-embedded-hardware` — refine fits, regenerate parts, adjust clearances.
+
+## Explore the full assembly
+
+1. Install [OpenSCAD](https://openscad.org/).
+2. Open `assembly_preview.scad` → **F5**.
+3. Toggle `EXPLODED = true/false`.
+
+Or browse screenshots in `previews/`.
+
+## Print bill of materials (3D parts)
+
+| ID | File | Qty | Purpose |
+| :--- | :--- | ---: | :--- |
+| **A** | `part_a_base_enclosure.scad` | 1 | Main housing: Nano, LiPo/TP4056, carousel servo, chute |
+| **B** | `part_b_base_plate.scad` | 1 | Drop floor with 20×15 mm hole + latch rails |
+| **C** | `part_c_carousel.scad` | 1 | 8-pocket carousel + MG90S horn hub |
+| **D** | `part_d_latch_gate.scad` | 1 gate + 1 arm | Sliding gate + servo horn arm (`BUILD`) |
+| **E** | `part_e_carousel_lid.scad` | 1 | Lid / finger shield / anti-spill |
+| **F** | `part_f_catch_tray.scad` | 1 | Vision landing tray (OpenCV ROI) |
+| **G** | `part_g_chute_spout.scad` | 1 | Chute → tray guide |
+| **H** | `part_h_latch_servo_bracket.scad` | 1 | Second MG90S mount for latch |
+| **I** | `part_i_cable_clips.scad` | 4 (on plate) | USB / servo strain relief |
+| **J** | `part_j_feet.scad` | 4 (on plate) | Anti-slip feet |
+| **K** | `part_k_pill_insert.scad` | 0–8 | Optional pocket reducers for small tablets |
+
+Shared dimensions: `parameters.scad`.
+
+### Not printed (buy / reuse)
+
+- Arduino Nano 33 BLE, 2× MG90S, LiPo 500 mAh, TP4056  
+- M2/M2.5 screws, wire, **5V servo supply + common ground**  
+- Laptop camera (index 0)  
+- Homing sensor — **optional** for v1 (manual pocket #0 alignment)
+
+## Regenerate STLs + PNGs
+
+```bash
+chmod +x cad/render_all.sh
+./cad/render_all.sh
+```
+
+Manual: open a part → **F6** → **File → Export → STL** into `cad/stl/`.
+
+## Suggested print settings
+
+- PLA (or PETG for latch/gate), **0.4 mm** nozzle, **0.2 mm** layers  
+- 3–4 perimeters, 20–30% infill (40% for carousel hub)  
+- Supports: light under Part A chute underside and Part G channel if printed flat  
+
+## Assembly order
+
+1. J feet under A  
+2. Carousel MG90S into A well; press C onto horn; seat B plate  
+3. H bracket + latch MG90S; fit D gate into B rails; link D arm  
+4. E lid on C  
+5. G spout on A chute exit → F catch tray in front  
+6. I clips on USB / servo leads  
+7. K inserts only if tablets rattle in full-size pockets  
+
+Firmware pins: carousel **D9**, latch **D10**.
