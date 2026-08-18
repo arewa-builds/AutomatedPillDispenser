@@ -1,41 +1,56 @@
-# CAD — 3D-Printed Dispenser Assembly
+# CAD — Explore Housing, Carousel & Latch
 
-Parametric **OpenSCAD** sources and exported **STL** meshes for the Automated Pill Dispenser mechanical build (carousel, latch, Nano / MG90S / LiPo housing).
+Parametric OpenSCAD examples for the Automated Pill Dispenser. Use `/cad-embedded-hardware` to iterate; open these files in [OpenSCAD](https://openscad.org/) to explore.
 
-## Expert subagent
+## Quick start — explore the assembly
 
-| Invoke | Role |
-| :--- | :--- |
-| `/cad-embedded-hardware` | Lead CAD & Embedded Hardware Engineer |
+1. Install OpenSCAD.
+2. Open `assembly_preview.scad`.
+3. Press **F5** (preview).
+4. Toggle at the top of the file:
+   - `EXPLODED = true;` — parts separated (easiest to study)
+   - `EXPLODED = false;` — seated stack
 
-Use this agent for all STL/OpenSCAD work. It designs to exact Nano 33 BLE, MG90S, and LiPo/TP4056 tolerances and keeps prints FDM-friendly.
-
-## Parts
-
-| Part | File (planned) | Purpose |
+| Color | Part | What you’re looking at |
 | :--- | :--- | :--- |
-| A | `part_a_base_enclosure.scad` | Main chassis: Nano, LiPo/TP4056, carousel servo, 45° chute |
-| B | `part_b_base_plate.scad` | 100 mm drop floor with 20×15 mm hole |
-| C | `part_c_carousel.scad` | 98 mm / 8-pocket carousel + servo-horn hub |
-| D | `part_d_latch_gate.scad` | Second MG90S side gate over drop hole |
-| — | `parameters.scad` | Shared dimensions & clearances |
-| — | `stl/` | Exported meshes for your slicer |
+| Blue | **A** Housing | Nano, LiPo/TP4056, carousel servo well, 45° chute, camera lip |
+| Orange | **B** Plate | 100 mm drop floor, center shaft hole, 20×15 mm drop slot |
+| Green | **C** Carousel | 98 mm drum, 8 pockets, servo-horn press-fit hub |
+| Red | **D** Latch | Sliding gate over drop hole + side MG90S hint |
 
-## Tooling
+## Printable part files
 
-1. Install [OpenSCAD](https://openscad.org/) (or use an online OpenSCAD editor).
-2. Open a `part_*.scad` file.
-3. **F5** preview → **F6** render → **File → Export → Export as STL**.
-4. Slice in Cura / PrusaSlicer / Bambu Studio (PLA, 0.4 mm nozzle, 0.2 mm layers recommended).
+| File | Export STL to | Print notes |
+| :--- | :--- | :--- |
+| `part_a_base_enclosure.scad` | `stl/part_a_base_enclosure.stl` | Flat on bottom; light supports under chute if needed |
+| `part_b_base_plate.scad` | `stl/part_b_base_plate.stl` | Flat; no supports |
+| `part_c_carousel.scad` | `stl/part_c_carousel.stl` | Flat on open bottom; no supports; press onto MG90S horn |
+| `part_d_latch_gate.scad` | `stl/part_d_latch_gate.stl` | Set `BUILD="gate"` / `"arm"` / `"both"`; print flat |
 
-## Hardware the models must fit
+**Export:** Open part → **F6** (render) → **File → Export → Export as STL…**
 
-- Arduino Nano 33 BLE — 45 × 18 × 7 mm + USB cutout  
-- MG90S ×2 — 22.8 × 12.2 × 28.5 mm  
-- LiPo 500 mAh pocket — 30 × 20 × 6 mm + TP4056 USB-C access  
+Shared dimensions live in `parameters.scad` (edit once, all parts update after reload).
 
-Firmware servo pins (for assembly orientation): carousel **D9**, latch **D10**.
+## Hardware these models fit
 
-## Status
+- Arduino Nano 33 BLE — 45×18×7 mm + USB cutout (−Y wall on Part A)
+- MG90S ×2 — 22.8×12.2×28.5 mm (center carousel + side latch)
+- LiPo 500 mAh — 30×20×6 mm pocket; TP4056 USB-C on +X wall
 
-OpenSCAD part files are generated on demand by `/cad-embedded-hardware`. Start with Part A or Part C when you invoke the agent.
+Firmware pins when assembling: carousel **D9**, latch **D10**.
+
+## Preview images
+
+Ready-made screenshots (also under `previews/`):
+
+- `previews/assembly_preview.png` — exploded stack  
+- `previews/part_a_base_enclosure.png` — housing  
+- `previews/part_b_base_plate.png` — drop plate  
+- `previews/part_c_carousel.png` — carousel  
+- `previews/part_d_latch_gate.png` — gate + servo arm + bracket  
+
+Exported example meshes are in `stl/` (regenerate anytime with OpenSCAD `-o`).
+
+## Expert agent
+
+`/cad-embedded-hardware` — refine tolerances, add screw bosses, change pocket count, or regenerate STLs after you dry-fit real parts.
