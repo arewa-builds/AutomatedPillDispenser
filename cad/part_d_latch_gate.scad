@@ -1,14 +1,14 @@
 // Part D — Latch sliding gate + servo drive arm
-// Export:
+// Separate STLs (no multi-body plate):
 //   BUILD="gate" → stl/part_d_latch_gate.stl
 //   BUILD="arm"  → stl/part_d_latch_horn_arm.stl
-//   BUILD="both" → both laid out (default for preview)
+//   BUILD="both" → preview layout only (not for slicing)
 // Bracket is Part H.
 
 include <parameters.scad>;
 
 $fn = 64;
-BUILD = "both";
+BUILD = "gate";
 
 module latch_gate() {
     difference() {
@@ -44,11 +44,11 @@ module latch_servo_arm() {
     }
 }
 
-if (BUILD == "gate") {
-    latch_gate();
-} else if (BUILD == "arm") {
+if (BUILD == "arm") {
     latch_servo_arm();
-} else {
+} else if (BUILD == "both") {
     latch_gate();
     translate([40, 0, 0]) latch_servo_arm();
+} else {
+    latch_gate();
 }
