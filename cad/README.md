@@ -21,14 +21,16 @@ Or browse screenshots in `previews/`.
 | **A** | `part_a_base_enclosure.scad` | 1 | Main housing: Nano, LiPo/TP4056, carousel servo, chute |
 | **B** | `part_b_base_plate.scad` | 1 | Drop floor with 20×15 mm hole + latch rails |
 | **C** | `part_c_carousel.scad` | 1 | 8-pocket carousel + MG90S horn hub |
-| **D** | `part_d_latch_gate.scad` | 1 gate + 1 arm | Sliding gate + servo horn arm (`BUILD`) |
+| **D** | `part_d_latch_gate.scad` | 1 + 1 | Separate STLs: `part_d_latch_gate.stl`, `part_d_latch_horn_arm.stl` |
 | **E** | `part_e_carousel_lid.scad` | 1 | Lid / finger shield / anti-spill |
 | **F** | `part_f_catch_tray.scad` | 1 | Vision landing tray (OpenCV ROI) |
 | **G** | `part_g_chute_spout.scad` | 1 | Chute → tray guide |
 | **H** | `part_h_latch_servo_bracket.scad` | 1 | Second MG90S mount for latch |
-| **I** | `part_i_cable_clips.scad` | 4 (on plate) | USB / servo strain relief |
-| **J** | `part_j_feet.scad` | 4 (on plate) | Anti-slip feet |
+| **I** | `part_i_cable_clips.scad` | print **4×** | Single-body `part_i_cable_clip.stl` (duplicate in slicer) |
+| **J** | `part_j_feet.scad` | print **4×** | Single-body `part_j_foot.stl` (duplicate in slicer) |
 | **K** | `part_k_pill_insert.scad` | 0–8 | Optional pocket reducers for small tablets |
+
+Parts **D / I / J** no longer ship multi-body “floating plate” STLs — one solid per file.
 
 Shared dimensions: `parameters.scad`.
 
