@@ -43,22 +43,12 @@ It encodes the Lead Technical Co-Developer persona (firmware, vision, Databricks
 
 **Software-first track active** — no Arduino required yet. You can develop vision, mock hardware, telemetry, and local medallion transforms on a laptop now. Firmware is compile-ready for when parts arrive.
 
-## Run with Docker (recommended)
-
-```bash
-docker compose build
-docker compose run --rm app smoke          # mock edge headless
-docker compose run --rm medallion          # Bronze → Silver → Gold
-```
-
-Full guide: [`docs/docker.md`](docs/docker.md).
-
-## Run on host (no Docker)
+## Run now (no hardware)
 
 ```bash
 # Edge mock pipeline (laptop camera) or headless smoke
 cd edge
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python pipeline.py --mode mock --headless
 
@@ -75,6 +65,5 @@ See [`docs/software-first-roadmap.md`](docs/software-first-roadmap.md).
 - Product brief: [`project.md`](project.md)
 - Full schedule & BOM: [`docs/project-context.md`](docs/project-context.md)
 - Software-first plan: [`docs/software-first-roadmap.md`](docs/software-first-roadmap.md)
-- Docker guide: [`docs/docker.md`](docs/docker.md)
 - Edge docs: [`edge/README.md`](edge/README.md)
 - Agent guide: [`AGENTS.md`](AGENTS.md)
