@@ -20,8 +20,9 @@ Medication non-adherence costs the healthcare system billions and hits elderly a
 ## Repository
 
 ```
-.cursor/agents/   Expert MedTech architect subagent
+.cursor/agents/   Expert subagents (systems + CAD)
 .cursor/rules/    Always-on project constraints
+cad/              OpenSCAD / STL mechanical parts
 firmware/         Arduino C++ (Week 1+)
 edge/             Python vision + telemetry (Week 2–3)
 databricks/       PySpark / Delta Lake (Week 4–5)
@@ -29,15 +30,14 @@ ml/               MLflow models (Week 5)
 docs/             Schedule, BOM, architecture notes
 ```
 
-## Cursor expert agent
+## Cursor expert agents
 
-This repo includes a specialist subagent:
+| Invoke | Role |
+| :--- | :--- |
+| `/medtech-lead-architect` | Firmware, vision, Databricks, MLflow, Power BI |
+| `/cad-embedded-hardware` | OpenSCAD/STL: carousel, latch, Nano/MG90S/LiPo housing |
 
-- **Name:** `medtech-lead-architect`
-- **Invoke:** `/medtech-lead-architect` in Agent chat
-- **Definition:** `.cursor/agents/medtech-lead-architect.md`
-
-It encodes the Lead Technical Co-Developer persona (firmware, vision, Databricks, MLflow, Power BI) plus the 6-week plan and safety constraints. See `AGENTS.md` for usage.
+See `AGENTS.md` and `cad/README.md`.
 
 ## Current status
 
