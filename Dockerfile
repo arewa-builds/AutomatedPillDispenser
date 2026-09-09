@@ -15,6 +15,7 @@ WORKDIR /app
 # System libs for OpenCV / MediaPipe wheels + serial tooling
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
+        libegl1 \
         libglib2.0-0 \
         libsm6 \
         libxext6 \

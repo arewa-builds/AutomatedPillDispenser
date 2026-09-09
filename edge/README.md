@@ -19,9 +19,17 @@ See [`docs/docker.md`](../docs/docker.md). Container installs use `requirements-
 ```bash
 cd edge
 python3 -m venv .venv
-source .venv/bin/activate
+# Windows Git Bash: source .venv/Scripts/activate
+# Linux/macOS:      source .venv/bin/activate
+source .venv/Scripts/activate
+
+# If you previously installed OpenCV 5, remove it first:
+pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python
+
 pip install -r requirements.txt
 ```
+
+Requirements pin **OpenCV 4.x** (`<5`) and **MediaPipe ≥0.10.14**. Face detection uses the **MediaPipe Tasks** BlazeFace model in `models/blaze_face_short_range.tflite` (vendored; auto-downloaded if missing). Avoid OpenCV 5 — it lacks Haar face data and can leave face detection disabled.
 
 ## Run without Arduino (recommended now)
 
@@ -29,9 +37,11 @@ pip install -r requirements.txt
 python pipeline.py --mode mock
 ```
 
-Flow: stable face (MediaPipe) → mock `DISPENSE` → OpenCV tray pill count → `logs/telemetry/*.jsonl`.
+Flow: stable face (MediaPipe Tasks) → mock `DISPENSE` → OpenCV tray pill count → `logs/telemetry/*.jsonl`.
 
 Place candy in the lower-central tray ROI (drawn on screen). Press `q` to quit.
+
+If the log shows `FaceGate backend: MediaPipe Tasks`, camera face detection is enabled.
 
 ### Headless smoke (CI / no camera UI)
 
