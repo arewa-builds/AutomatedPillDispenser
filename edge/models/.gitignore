@@ -1,0 +1,5 @@
+# Face detector models (BlazeFace short-range for MediaPipe Tasks).
+# blaze_face_short_range.tflite is vendored; FaceGate can also download it on first run.
+*
+!.gitignore
+!blaze_face_short_range.tflite
