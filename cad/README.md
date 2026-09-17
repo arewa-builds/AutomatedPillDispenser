@@ -2,6 +2,13 @@
 
 Parametric **OpenSCAD** sources, **STL** meshes, and **PNG** previews for an adequate Automated Pill Dispenser mechanical prototype.
 
+> **v1 vs v2** — the files in this directory are **v1**, the set that was printed and
+> assembled first. Its bench failures (servo blocked by internal ribs, drop plate
+> rotating instead of the carousel, slit-sized chute exit) are fixed in
+> [`v2/`](v2/README.md): cylindrical drum, keyed fixed plate with one opening,
+> open carousel driven directly from above, 40 mm wide 45 deg chute.
+> Print v2 for the working prototype; v1 is kept for reference.
+
 ## Expert agent
 
 `/cad-embedded-hardware` — refine fits, regenerate parts, adjust clearances.
