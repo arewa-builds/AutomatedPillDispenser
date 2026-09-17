@@ -3,7 +3,7 @@
 The design in [`reference_design.png`](reference_design.png), modelled. Geometry is
 complete and renders clean; STLs are not exported yet (see `PLAN.md`, section 9).
 
-![v3 annotated](preview/v3_hero_annotated.png)
+![v3 annotated](previews/v3_hero_annotated.png)
 
 ## How it dispenses
 
@@ -40,17 +40,38 @@ wants a positional servo rather than a continuous-rotation one.
 
 ```bash
 sudo apt-get install -y openscad          # once
-./render_all_v3.sh                        # previews -> preview/
+pip install pillow                        # for the annotated hero only
+./render_all_v3.sh                        # previews -> previews/
 ./render_all_v3.sh --stl                  # previews + stl/
 ```
 
+Assembly views:
+
 | View | |
 | :--- | :--- |
-| `preview/v3_cutaway.png` | wall cut away over the chute |
-| `preview/v3_assembled.png` | as it sits on the desk |
-| `preview/v3_section.png` | half section: deck, running gap, chute, drive train |
-| `preview/v3_top.png` | 8 bins and the discharge wedge |
-| `preview/v3_exploded.png` | assembly order |
+| `previews/v3_hero_annotated.png` | cutaway with callouts |
+| `previews/v3_cutaway.png` | wall cut away over the chute |
+| `previews/v3_assembled.png` | as it sits on the desk |
+| `previews/v3_section.png` | half section: deck, running gap, chute, drive train |
+| `previews/v3_top.png` | 8 bins and the discharge wedge |
+| `previews/v3_exploded.png` | assembly order |
+
+One view per part, plus two details worth their own frame:
+
+| View | |
+| :--- | :--- |
+| `previews/part_a3_deck_body.png` | wedge, pilot post, bracket screw seats, joint ears |
+| `previews/part_a3_deck_body_deck_wedge.png` | straight down the deck: the 24 deg wedge |
+| `previews/part_b3_base_body.png` | bay, chute, cover posts |
+| `previews/part_b3_base_body_chute.png` | ramp through the wall notch and the shoulder fins |
+| `previews/part_c3_carousel.png` | hub and 8 dividers |
+| `previews/part_d3_drive_shaft.png` | shown in print orientation, head down |
+| `previews/part_e3_servo_bracket.png` | MG90S pocket, gusset, ribs |
+| `previews/part_f3_catch_tray.png` | cut-down mouth wall |
+| `previews/part_g3_base_cover.png` | electronics floor |
+
+Blue faces are outside surfaces, orange faces are cut surfaces — the same
+convention as the v1 and v2 preview sets.
 
 Preview flags: `CUTAWAY`, `SECTION`, `EXPLODED`, `SHOW_PILLS`, `SHOW_BRACKET`,
 and `DOSE_ANGLE` (22.5 = at rest with the emptied bin over the wedge).

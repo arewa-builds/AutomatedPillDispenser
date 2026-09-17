@@ -141,7 +141,7 @@ Discharge and chute:
 | Lead-in relief | 1.2 mm on the opening's top face |
 | Chute inside width | 14 mm at the deck, 32 mm from mid-ramp out |
 | Ramp | 38-42 deg top surface; floor thickens 2.4 to 6.5 mm so the *underside* stays 40-42 deg |
-| Wall notch | 32 mm wide, z 8 to 52 — full height, so no ledge can shelf a tablet |
+| Wall notch | 32.8 mm wide, z 8 to 52 — full height, so no ledge can shelf a tablet; 0.4 mm wider than the chute so their faces are not coplanar |
 | Chute lip | z = 8 mm at y = 70, overhanging the tray by 2 mm |
 
 Drive train:
@@ -218,7 +218,7 @@ Only then print A3 and B3.
 | G2 | A3 deck body, B3 base body | done — render clean, chute fused into the wall |
 | G3 | C3 carousel, D3 shaft, E3 bracket | done — shaft clears the servo plate by 1.5 mm |
 | G4 | F3 tray, G3 base cover | done |
-| G5 | Assembly preview: cutaway, section, top, exploded | done, in `preview/` |
+| G5 | Previews: 7 parts + 2 details + 5 assembly views + annotated hero | done, in `previews/` |
 | G6 | Coupons C1-C3 | **to do** |
 | G7 | `render_all_v3.sh --stl` | **to do** — held pending sign-off |
 | G8 | Firmware constants | **to do** — see section 10 |

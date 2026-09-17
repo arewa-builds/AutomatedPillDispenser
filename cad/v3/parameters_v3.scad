@@ -128,7 +128,10 @@ chute_wall     = 2.4;
 // The notch is only as wide as the pill passage, so the chute's own side walls
 // overlap the remaining drum wall and fuse into it. Cut it any wider and the
 // chute floats free of the housing.
-chute_win_w    = 32.0;
+// 0.4 mm wider than the chute's inside width so the notch's cut faces are not
+// coplanar with the chute's wall faces. The walls still overlap the drum wall by
+// 2.0 mm, which is what fuses the chute into the housing.
+chute_win_w    = 32.8;
 chute_win_z0   = 8.0;                            // below the ramp's underside
 chute_win_z1   = deck_z;                         // open right up to the deck
 

@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 
-SRC = '/workspace/cad/v3/preview/v3_cutaway.png'
-DST = '/tmp/renders/v3_hero_annotated.png'
+SRC = 'previews/v3_cutaway.png'
+DST = 'previews/v3_hero_annotated.png'
 
 PAD_L, PAD_R, PAD_T, PAD_B = 430, 430, 90, 40
 FB = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
