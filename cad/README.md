@@ -2,6 +2,19 @@
 
 Parametric **OpenSCAD** sources, **STL** meshes, and **PNG** previews for an adequate Automated Pill Dispenser mechanical prototype.
 
+> **Which set to print** — the files in this directory are **v1**, the set that was
+> printed and assembled first. Its bench failures (servo blocked by internal ribs,
+> drop plate rotating instead of the carousel, slit-sized chute exit) are fixed in
+> [`v2/`](v2/README.md): cylindrical drum, keyed fixed plate with one opening, open
+> carousel driven directly from above, 40 mm wide 45 deg chute. STLs are exported
+> and ready to slice.
+>
+> [`v3/`](v3/README.md) is the current design direction, modelled from a newer
+> reference drawing: the deck is integral to the housing so no plate can rotate,
+> the 8 compartments are open bins, the chute is part of the housing, and the servo
+> hangs from a single L bracket. Geometry and previews are done; STL export is
+> pending sign-off (see [`v3/PLAN.md`](v3/PLAN.md)).
+
 ## Expert agent
 
 `/cad-embedded-hardware` — refine fits, regenerate parts, adjust clearances.
