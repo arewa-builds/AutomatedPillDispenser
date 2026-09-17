@@ -3,6 +3,8 @@
 Plan of record for turning the v3 reference design into printable STLs. Nothing is
 modelled yet; this document is the spec that the OpenSCAD sources will implement.
 
+![v3 reference design](reference_design.png)
+
 ---
 
 ## 1. Design intent read from the reference
