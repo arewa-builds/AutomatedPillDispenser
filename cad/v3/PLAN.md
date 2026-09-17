@@ -1,7 +1,8 @@
 # v3 STL plan — "integral deck + open carousel"
 
-Plan of record for turning the v3 reference design into printable STLs. Nothing is
-modelled yet; this document is the spec that the OpenSCAD sources will implement.
+Plan of record for the v3 reference design. The OpenSCAD sources in this folder
+implement it and render clean; **STL export is deliberately not run yet** — see
+section 9 for the remaining gates.
 
 ![v3 reference design](reference_design.png)
 
@@ -11,97 +12,98 @@ modelled yet; this document is the spec that the OpenSCAD sources will implement
 
 | Feature in the drawing | How it is built |
 | :--- | :--- |
-| Grey cylindrical container housing | 120 mm OD drum, 3 mm wall, 92 mm tall |
-| Open carousel, **no outer wall** | Compartments are closed on the outside by the drum bore; carousel is a hub + 8 radial dividers only |
+| Grey cylindrical container housing | 120 mm OD drum, 3 mm wall, 94 mm tall |
+| Open carousel, **no outer wall** | Compartments are closed on the outside by the drum bore; the carousel is a hub + 8 radial dividers, nothing else |
 | Dividers flush with the housing | 0.35 mm running gap to the deck below, 0.7 mm sweep gap to the bore |
-| 8 compartments | 45 deg pitch |
+| 8 compartments | 45 deg pitch, ~4.6 cm3 each |
 | Direct servo drive shaft, no gears | MG90S above the carousel, printed shaft extension down to the hub |
-| Servo support bracket | L bracket, screwed to a pad on the drum's inner wall, cantilevered to the axis, gusseted |
-| Discharge opening | One tapered wedge through the deck, feeding straight into the chute |
-| 45 deg chute walls | Chute is integral to the housing: the wedge channel ramps down and out through the wall |
-| Pill catcher tray, opening flush with the chute walls | Tray with a cut-down mouth wall that butts against the chute exit |
+| Servo support bracket | L bracket cantilevered from the inner wall to the axis, gusseted and ribbed |
+| Discharge opening | One 24 deg wedge through the deck, feeding straight into the chute |
+| 45 deg chute walls | Chute is integral to the housing: the channel ramps down and out through the wall |
+| Pill catcher tray, opening flush with the chute walls | Mouth wall cut down; the chute lip overhangs into the well |
 
-Load-bearing consequence of "no outer wall": the drum bore is a sealing surface, so
-the bore must stay round and the carousel must never be forced against it. Every
+Load-bearing consequence of "no outer wall": the drum bore is a sealing surface,
+so it must stay round and the carousel must never be forced against it. Every
 clearance in section 5 follows from that.
 
 ---
 
-## 2. The one problem this geometry has, and the two ways out
+## 2. Why the mechanism works, and the one number that makes it work
 
-Pills sit directly on the deck. The deck has one opening. There is **no rotation
-angle at which a compartment-sized opening is covered** — a divider is only 2.4 mm
-thick, so at rest the opening always exposes part of two neighbouring compartments
-and they dribble into the chute. This is not a tolerance issue; it is geometric.
+The deck holds the pills in. It has one wedge opening. The unit rests with the
+**just-emptied compartment centred on that opening**, so there is nothing above
+the opening to fall through. A 45 deg step sweeps the next compartment across the
+opening and gravity empties it into the chute. One servo, no gate, no carousel
+floor — the compartments are open bins exactly as drawn.
 
-**Variant A — hidden gate (recommended).** A flat shutter slides under the deck,
-driven by the second MG90S already in the BOM. The drawn geometry is untouched:
-open compartments with no floor, dividers flush to the deck, full-width discharge
-wedge. The gate lives entirely below the deck and is invisible in every view of the
-drawing. Parking tolerance becomes about +/- 20 deg, so servo repeatability stops
-mattering, and `firmware/pill_dispenser/pill_dispenser.ino` already drives exactly
-this pair (carousel servo + latch servo).
+That only holds if the opening fits inside one compartment's interior with room
+to spare, measured at the opening's inner radius, where a divider subtends the
+most angle:
 
-**Variant B — one servo only.** Keep a single servo by giving the carousel a floor
-with one 22 deg drop hole per compartment plus ramped floors, and narrowing the deck
-opening to 15 deg. Leak rule: `45 - 22 = 23 deg` of covering band must exceed the
-15 deg opening, leaving only **+/- 4 deg** of parking error. That rules out a
-continuous-rotation servo with timed steps and gives 4 doses per fill on a standard
-180 deg MG90S (45 deg steps across its travel). It also changes the carousel from
-the drawn open bins into holed bins.
+```
+open_deg  <=  360/car_n - 2*asin(div_t / (2*open_r_in)) - 2*park_margin
+24        <=  45        - 8.6                          - 12.4
+```
 
-Everything below builds Variant A; Variant B is a parameter flag (`GATE = false`)
-that swaps two parts.
+So the design runs a **+/- 6.2 deg parking margin**: park more than that off
+centre and the opening's edge slips past the divider and starts draining the next
+compartment. `parameters_v3.scad` derives `park_margin` and every part echoes it,
+so widening the opening or moving it inward fails loudly rather than silently.
+
+Consequences worth knowing before you print:
+
+- A **positional** servo is required. A continuous-rotation servo stepped on
+  timing alone will drift past 6 deg within a few doses. A standard 180 deg MG90S
+  parks to about 1 deg, well inside budget, and gives 45 deg steps across four
+  stops per sweep.
+- If you later want all 8 bins per fill from a continuous-rotation servo, the
+  cheapest fix is one lever microswitch tripped once per revolution to re-zero,
+  not a wider opening.
 
 ---
 
-## 3. Why the housing splits into two prints
+## 3. Why the housing is two prints
 
-The deck (the carousel's running surface) is a 114 mm disc 52 mm up inside a drum.
-Printed as one piece it is either an unprintable 114 mm bridge or a support forest
-against the surface that has to stay flat.
+The deck — the surface the pills sit on and the dividers sweep — is a 114 mm disc
+52 mm up inside a drum. As one piece that is either an unprintable bridge or a
+support forest against the one surface that has to stay flat.
 
-Splitting at the deck plane makes both halves trivial:
+Split at the deck plane, both halves are trivial:
 
-- **Upper "deck body"** — printed **deck-down**: the deck is the first layer (perfectly
-  flat), the drum wall rises from it, the discharge wedge is just a hole, the bracket
-  pad and pilot post grow upward. No supports.
-- **Lower "base body"** — printed open-end-down: the 45 deg chute ramp and the
-  external trough are 45 deg overhangs, self-supporting. No supports.
+- **Deck body (A3)** prints as modelled: the deck's flat underside is the first
+  layer, the wall rises from it, the wedge is just a hole, the pilot post grows
+  upward. No supports.
+- **Base body (B3)** prints open-end-down: the chute floor and the external run
+  are 40-42 deg overhangs, self-supporting. No supports.
 
-They lap on a 3 mm spigot and take three M3 screws. Bonus: with the deck integral to
-the drum, the v1 "plate rotates instead of the carousel" failure becomes impossible —
-there is no separate plate to rotate.
+Three screwed ears outside the drum join them. Concentricity between the bodies
+is deliberately not critical: the running surface *and* the bore are both on the
+deck body, so only the chute has to line up, and +/- 1 mm there is harmless.
 
-Alternative if you would rather keep the deck replaceable: a drop-in keyed plate as
-in v2. Costs the anti-rotation keys and a ledge, gains tunability. Not the default.
+With the deck integral to the drum, the v1 failure where the drop plate rotated
+instead of the carousel is designed out rather than fastened out.
 
 ---
 
 ## 4. STL manifest
 
-Nine functional parts, three test coupons.
+Seven functional parts, three test coupons.
 
 | # | Source file | STL | Qty | Function | Print orientation | Supports |
 | ---: | :--- | :--- | ---: | :--- | :--- | :--- |
-| 1 | `part_a3_deck_body.scad` | `part_a3_deck_body.stl` | 1 | Deck + drum wall + discharge wedge + pilot post + bracket pad + lap spigot | Deck down | none |
-| 2 | `part_b3_base_body.scad` | `part_b3_base_body.stl` | 1 | Bay + 45 deg chute ramp + wall exit + trough lip + base posts + cable port | Open end down | none |
-| 3 | `part_c3_carousel.scad` | `part_c3_carousel.stl` | 1 | Hub + 8 dividers, no outer wall, shaft socket + pilot journal | Divider ends down on the bed | none |
-| 4 | `part_d3_drive_shaft.scad` | `part_d3_drive_shaft.stl` | 1 | Horn pocket on top, hex key into the hub | Vertical | brim |
-| 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | L bracket + gusset + MG90S pocket | Wall pad flat on the bed | none |
-| 6 | `part_f3_gate.scad` (A) | `part_f3_gate.stl` | 1 | Sliding shutter, crank slot | Flat | none |
-| 7 | `part_g3_gate_servo_mount.scad` (A) | `part_g3_gate_servo_mount.stl` | 1 | Second MG90S mount + crank pivot inside the bay | Flat | none |
-| 8 | `part_h3_catch_tray.scad` | `part_h3_catch_tray.stl` | 1 | Tray, mouth wall cut down flush to the chute exit | Flat | none |
-| 9 | `part_i3_base_cover.scad` | `part_i3_base_cover.stl` | 1 | Electronics floor, countersunk screws, foot pads | Flat | none |
-| C1 | `coupon_1_sector.scad` | `coupon_1_sector.stl` | 1 | 45 deg slice of deck + one divider + pilot: proves the running gaps | as modelled | none |
-| C2 | `coupon_2_servo_fit.scad` | `coupon_2_servo_fit.stl` | 1 | MG90S pocket + horn pocket + hub socket: proves the servo/shaft fits | as modelled | none |
-| C3 | `coupon_3_chute_dock.scad` | `coupon_3_chute_dock.stl` | 1 | Chute exit lip + tray mouth: proves the flush dock | as modelled | none |
+| 1 | `part_a3_deck_body.scad` | `part_a3_deck_body.stl` | 1 | Drum wall + integral deck + 24 deg wedge + pilot post + bracket screw seats + joint ears | As modelled, deck underside down | none |
+| 2 | `part_b3_base_body.scad` | `part_b3_base_body.stl` | 1 | Bay + 45 deg chute + wall notch + shoulder fins + cover posts + cable port | As modelled, open end down | none |
+| 3 | `part_c3_carousel.scad` | `part_c3_carousel.stl` | 1 | Hub + 8 dividers, no floor, hex socket + pilot journal | Divider ends and hub flat on the bed | none |
+| 4 | `part_d3_drive_shaft.scad` | `part_d3_drive_shaft.stl` | 1 | Horn pocket, column, hex foot | Head down (already flipped in the file) | brim |
+| 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | Wall pad + gusset + ribbed arm + MG90S plate | On its side, arm's 22 mm face on the bed | none |
+| 6 | `part_f3_catch_tray.scad` | `part_f3_catch_tray.stl` | 1 | Tray, mouth wall cut down to the chute lip | Flat | none |
+| 7 | `part_g3_base_cover.scad` | `part_g3_base_cover.stl` | 1 | Electronics floor, foot pads | Flat | none |
+| C1 | `coupon_1_sector.scad` | *to write* | 1 | 45 deg slice of deck + one divider + pilot post: proves the running and sweep gaps | as modelled | none |
+| C2 | `coupon_2_servo_fit.scad` | *to write* | 1 | MG90S pocket + horn pocket + hub hex socket: proves the drive train fits | as modelled | none |
+| C3 | `coupon_3_chute_dock.scad` | *to write* | 1 | Chute lip + tray mouth: proves the flush dock | as modelled | none |
 
-Variant B swaps #6 and #7 for a floored, ramped `part_c3_carousel` and a narrower
-deck opening — no new files, just `GATE = false`.
-
-Shared: `parameters_v3.scad`, `lib_v3.scad` (reused from v2), `assembly_preview_v3.scad`,
-`render_all_v3.sh`.
+Shared: `parameters_v3.scad`, `lib_v3.scad`, `assembly_preview_v3.scad`,
+`render_all_v3.sh` (previews by default, `--stl` to export).
 
 ---
 
@@ -111,51 +113,47 @@ Drum and deck:
 
 | Parameter | Value | Why |
 | :--- | :--- | :--- |
-| Drum OD / wall / bore | 120 / 3.0 / 114 mm | fits any 180 mm bed, 3 mm is 7 perimeters at 0.4 mm |
-| Overall height (to rim) | 92 mm | bay 52 + carousel 26 + headroom |
-| Deck thickness | 5 mm | it is now structural, not a drop-in plate |
-| Deck top | z = 52 mm | leaves a 16 mm chute mouth above the bay floor |
-| Lap spigot | 3 mm tall, 0.30 mm slip | joins the two bodies |
-| Pilot post | 10.0 mm dia x 3.0 mm | carries carousel weight, journal is 10.35 mm |
+| Drum OD / wall / bore | 120 / 3.0 / 114 mm | fits any 180 mm bed; 3 mm is 7 perimeters at 0.4 mm |
+| Rim height | 94 mm | 10.6 mm of wall above the filled carousel |
+| Deck thickness | 5 mm | it is structural now, not a drop-in plate |
+| Deck top | z = 57 mm | leaves a 52 mm bay for the chute and electronics |
+| Wall/deck fillet | 1.2 mm | dividers are chamfered 1.6 mm to clear it |
+| Pilot post | 10.0 mm dia, 3.1 mm tall | the carousel's only bearing |
+| Joint | 3 ears at 30/150/270 deg, 3x M3 | outside the drum, nothing in the pill path |
 
 Carousel:
 
 | Parameter | Value |
 | :--- | :--- |
-| Compartments | 8 (45 deg pitch) |
-| Carousel OD | 112.6 mm (0.7 mm sweep gap per side) |
+| Compartments | 8 at 45 deg pitch |
+| Carousel OD | 112.6 mm, i.e. 0.7 mm sweep gap per side |
 | Divider thickness / height | 2.4 / 26 mm |
-| Divider to deck running gap | 0.35 mm |
-| Hub OD | 28 mm, with a 7 mm A/F hex shaft socket |
-| Dose capacity | ~4.6 cm3 per compartment, roughly 10-14 standard tablets |
+| Running gap to deck | 0.35 mm |
+| Hub | 28 mm OD, 7 mm A/F hex socket +0.4 mm slip |
+| Capacity | ~4.6 cm3 per bin, roughly 10-14 standard tablets |
 
 Discharge and chute:
 
-| Parameter | Value (Variant A) | Value (Variant B) |
-| :--- | :--- | :--- |
-| Deck opening | 30 deg sector, r 18 to 56.7 (breaches the rim) | 15 deg sector |
-| Carousel floor | none (open bins, as drawn) | 2.4 mm floor, 22 deg hole, 22 deg ramps |
-| Gate travel | 26 mm, 2.4 mm thick, rails at z 46.5-49.5 | n/a |
-| Internal ramp | 40 deg | 40 deg |
-| Wall exit window | 46 wide x 24 tall, z 14-38, 45 deg gable roof | same |
-| External run | 45 deg, exits at z = 6 mm | same |
+| Parameter | Value |
+| :--- | :--- |
+| Deck opening | 24 deg sector, r 16 to 57 (breaches the bore) |
+| Park margin | +/- 6.2 deg, derived not asserted |
+| Lead-in relief | 1.2 mm on the opening's top face |
+| Chute inside width | 14 mm at the deck, 32 mm from mid-ramp out |
+| Ramp | 38-42 deg top surface; floor thickens 2.4 to 6.5 mm so the *underside* stays 40-42 deg |
+| Wall notch | 32 mm wide, z 8 to 52 — full height, so no ledge can shelf a tablet |
+| Chute lip | z = 8 mm at y = 70, overhanging the tray by 2 mm |
 
-Servo train:
+Drive train:
 
 | Parameter | Value |
 | :--- | :--- |
-| Bracket reach | 57 mm from bore to axis, arm 20 wide x 10 deep, 3 mm gusset web |
-| Bracket pad | 26 x 34 x 6 mm, 2x M3 into the drum wall pad |
-| Shaft extension | 10 mm dia x 30 mm, round-horn pocket up, 7 mm hex down |
-| Carousel step | 45 deg per dose |
-| Gate open/closed | 26 mm of linear travel from a 15 mm crank |
-
-Tray:
-
-| Parameter | Value |
-| :--- | :--- |
-| Footprint | 78 x 62 x 14 mm, 2 mm floor |
-| Mouth | 44 wide x 16 tall cut-down wall, butts flush to the chute exit |
+| Bracket reach | 57 mm; arm 22 x 8 mm plus 12 mm ribs; 26 mm gusset web |
+| Wall screws | 2x M3 driven from outside into the bracket pad |
+| Servo plate | 4.5 mm thick — thinner than the servo's 6 mm nose, or the shaft head fouls it |
+| Flange plane | z = 112 mm |
+| Shaft | 30.15 mm overall: 26 mm head, 10 mm column, 7 mm hex foot |
+| Step per dose | 45 deg |
 
 ---
 
@@ -163,17 +161,18 @@ Tray:
 
 | Part | Est. filament | Est. time |
 | :--- | ---: | ---: |
-| A3 deck body | ~85 g | ~7 h |
-| B3 base body | ~70 g | ~6 h |
+| A3 deck body | ~88 g | ~7 h |
+| B3 base body | ~85 g | ~7 h |
 | C3 carousel | ~35 g | ~3 h |
-| H3 tray | ~28 g | ~2.5 h |
-| I3 base cover | ~20 g | ~1.5 h |
-| E3 bracket, D3 shaft, F3 gate, G3 mount | ~25 g total | ~2.5 h |
-| **Total** | **~265 g** | **~22 h** |
+| F3 tray | ~25 g | ~2.5 h |
+| G3 base cover | ~25 g | ~1.5 h |
+| E3 bracket + D3 shaft | ~23 g | ~2 h |
+| **Total** | **~280 g** | **~23 h** |
 
-Settings: PLA, 0.4 mm nozzle, 0.2 mm layers (0.15 mm for C3 and the deck's top
-surface if your printer is tuned), 3 perimeters, 20-25 % infill, no supports on any
-functional part. PETG for `part_f3_gate` if it feels sticky in PLA.
+PLA, 0.4 mm nozzle, 0.2 mm layers, 3 perimeters, 20-25 % infill, no supports on
+any part. Iron the deck body's top face if your slicer can — that is the running
+surface. The chute's underside is a 40-42 deg overhang: it prints unsupported but
+will look slightly rough, and it is a cosmetic surface.
 
 ---
 
@@ -181,60 +180,61 @@ functional part. PETG for `part_f3_gate` if it feels sticky in PLA.
 
 | Qty | Item | Note |
 | ---: | :--- | :--- |
-| 2 | MG90S | carousel + gate (Variant A) |
-| 4 | M3 x 10 self-tapping | 3 body-to-body, 1 spare |
-| 2 | M3 x 10 self-tapping | bracket to wall pad |
-| 3 | M3 x 10 self-tapping | base cover to posts |
-| 4 | M2 x 6 | servo flanges (2 per servo) |
-| 4 | M2 x 6 self-tapping | round horn into the carousel hub |
-| 1 | M3 x 16 + nut | gate crank pivot |
+| 1 | MG90S, **positional** (not continuous rotation) | see section 2 |
+| 1 | Round servo horn, 4-hole | 20.4 mm disc |
+| 2 | M3 x 10 self-tapping | bracket, from outside the wall |
+| 3 | M3 x 10 self-tapping | body joint ears |
+| 3 | M3 x 10 self-tapping | base cover into the posts |
+| 2 | M2 x 6 | servo flange |
+| 4 | M2 x 6 self-tapping | horn into the shaft head |
 
-No bearings, no rods, no gears.
+No bearings, no rods, no gears, no second servo.
 
 ---
 
 ## 8. Print the coupons first
 
-Roughly 40 minutes of printing that de-risks 22 hours:
+About 40 minutes of printing that de-risks 23 hours:
 
-1. **C1 sector** — drop the carousel slice onto the deck slice and spin it. Looking
-   for: no rub on the deck, no rub on the bore, and a tablet that cannot slip under a
-   divider. If it rubs, `car_gap` and `sweep_gap` change and nothing else does.
-2. **C2 servo fit** — MG90S must drop into the bracket pocket without forcing, and the
-   shaft's hex must engage the hub socket with no slop.
-3. **C3 chute dock** — the tray mouth should sit flush against the chute lip with no
-   step for a tablet to catch on.
+1. **C1 sector** — drop the carousel slice onto the deck slice and spin it.
+   Looking for no rub on the deck, no rub on the bore, and a tablet that cannot
+   slip under a divider. If it rubs, `car_gap` and the sweep gap change and
+   nothing else does.
+2. **C2 drive train** — the MG90S must drop into the bracket pocket without
+   forcing, the horn must seat in the shaft head, and the hex must engage the hub
+   with a little slop but no wobble.
+3. **C3 chute dock** — the tray mouth must clear the chute lip with no step for a
+   tablet to catch on.
 
 Only then print A3 and B3.
 
 ---
 
-## 9. Build sequence
+## 9. Where this stands
 
-| Gate | Step | Done when |
+| Gate | Step | State |
 | :--- | :--- | :--- |
-| G0 | Lock the two decisions in section 2 and 3 | you confirm |
-| G1 | `parameters_v3.scad` + `lib_v3.scad` | compiles, echoes the derived clearances |
-| G2 | A3 deck body, B3 base body | render clean, lap joint mates in the preview |
-| G3 | C3 carousel, D3 shaft, E3 bracket | preview shows the shaft engaging both ends |
-| G4 | F3 gate + G3 mount (Variant A) | gate sweeps the full opening in the preview |
-| G5 | H3 tray, I3 base cover | tray mouth flush in the section view |
-| G6 | Assembly preview + half section + cutaway | pill path clear end to end |
-| G7 | `render_all_v3.sh` | 9 STLs + 3 coupons, zero manifold warnings |
-| G8 | Firmware constants updated | 45 deg steps, gate open/close angles |
+| G1 | `parameters_v3.scad`, `lib_v3.scad` | done — echoes the derived park margin |
+| G2 | A3 deck body, B3 base body | done — render clean, chute fused into the wall |
+| G3 | C3 carousel, D3 shaft, E3 bracket | done — shaft clears the servo plate by 1.5 mm |
+| G4 | F3 tray, G3 base cover | done |
+| G5 | Assembly preview: cutaway, section, top, exploded | done, in `preview/` |
+| G6 | Coupons C1-C3 | **to do** |
+| G7 | `render_all_v3.sh --stl` | **to do** — held pending sign-off |
+| G8 | Firmware constants | **to do** — see section 10 |
 
 ---
 
 ## 10. Firmware touch points
 
-`firmware/pill_dispenser/pill_dispenser.ino` already runs a carousel servo plus a
-latch servo on a non-blocking `millis()` state machine, so Variant A needs constants,
-not new logic:
+`firmware/pill_dispenser/pill_dispenser.ino` already advances a carousel on a
+non-blocking `millis()` state machine and detaches the servo between doses, so v3
+needs constants rather than new logic:
 
-- carousel step 45 deg (was 8 pockets / 45 deg in v1 — unchanged)
-- gate open / closed angles from the 26 mm travel and 15 mm crank
-- dose sequence: gate closed, advance 45 deg, settle, gate open, dwell, gate closed
-- detach both servos between doses (existing behaviour)
+- 45 deg per dose, absolute positions rather than timed steps
+- park position = the opening's centre, so the emptied bin covers the wedge
+- settle dwell after each step before the vision check reads the tray
+- the v1 latch servo channel is unused in v3 and can be dropped
 
 ---
 
@@ -242,16 +242,17 @@ not new logic:
 
 | Risk | Mitigation |
 | :--- | :--- |
-| Bracket cantilever twists under servo reaction torque | 3 mm gusset web, 10 mm deep arm, two screws into the pad; if it still flexes, add a second arm to the opposite wall (a Y bridge) |
-| Deck warps and the carousel binds | Deck prints as the first layer (best flatness); 0.35 mm gap absorbs the rest; coupon C1 proves it before the 7 h print |
-| Gate friction after a few hundred cycles | Print the gate in PETG against PLA rails; rails are 0.4 mm wider than the gate |
-| Tablets wedge at the discharge edge | 1.2 mm lead-in relief on the opening's top face, as in v2 |
-| Continuous-rotation servo drift | Variant A makes it harmless; if you go Variant B, use a positional servo |
+| Bracket twists under servo reaction torque | 26 mm gusset web, 12 mm ribs, two screws into the pad; if it still flexes, add a second arm to the opposite wall |
+| Deck warps and the carousel binds | Deck prints as the first layer; the 0.35 mm gap absorbs the rest; coupon C1 proves it before the 7 h print |
+| Servo parks outside +/- 6.2 deg | Use a positional servo; verify each stop by eye on the first fill |
+| Tablets wedge at the wedge edge | 1.2 mm lead-in relief on the opening's top face |
+| Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore |
 
 ---
 
-## 12. What is not in v3
+## 12. Not in v3
 
-- No homing sensor. Variant A does not need one.
-- No lid. The drawing has none; the bracket occupies the rim. Easy to add later.
-- No pocket inserts. Add them if small tablets rattle.
+- No gate or shutter. The park convention makes one unnecessary.
+- No homing sensor. Only needed if you insist on a continuous-rotation servo.
+- No lid. The drawing has none and the bracket occupies the rim.
+- No pocket inserts. Add them if small tablets rattle in a 4.6 cm3 bin.
