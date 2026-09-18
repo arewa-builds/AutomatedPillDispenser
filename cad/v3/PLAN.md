@@ -91,19 +91,25 @@ Seven functional parts, three test coupons.
 
 | # | Source file | STL | Qty | Function | Print orientation | Supports |
 | ---: | :--- | :--- | ---: | :--- | :--- | :--- |
-| 1 | `part_a3_deck_body.scad` | `part_a3_deck_body.stl` | 1 | Drum wall + integral deck + 24 deg wedge + pilot post + bracket screw seats + joint ears | As modelled, deck underside down | none |
-| 2 | `part_b3_base_body.scad` | `part_b3_base_body.stl` | 1 | Bay + 45 deg chute + wall notch + shoulder fins + cover posts + cable port | As modelled, open end down | none |
+| 1 | `part_a3_deck_body.scad` | `part_a3_deck_body.stl` | 1 | Drum wall + integral deck + 24 deg wedge + pilot post + bracket screw seats + joint ears | Deck underside down | none |
+| 2 | `part_b3_base_body.scad` | `part_b3_base_body.stl` | 1 | Bay + 45 deg chute + wall notch + shoulder fins + cover posts + cable port | Open end down, as modelled | none |
 | 3 | `part_c3_carousel.scad` | `part_c3_carousel.stl` | 1 | Hub + 8 dividers, no floor, hex socket + pilot journal | Divider ends and hub flat on the bed | none |
-| 4 | `part_d3_drive_shaft.scad` | `part_d3_drive_shaft.stl` | 1 | Horn pocket, column, hex foot | Head down (already flipped in the file) | brim |
-| 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | Wall pad + gusset + ribbed arm + MG90S plate | On its side, arm's 22 mm face on the bed | none |
+| 4 | `part_d3_drive_shaft.scad` | `part_d3_drive_shaft.stl` | 1 | Horn pocket, column, hex foot | Head down | brim |
+| 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | Wall pad + gusset + ribbed arm + MG90S plate | Flipped, flange plane down: the pad's, arm's and servo plate's top faces are coplanar, so they form one flat footprint | none |
 | 6 | `part_f3_catch_tray.scad` | `part_f3_catch_tray.stl` | 1 | Tray, mouth wall cut down to the chute lip | Flat | none |
 | 7 | `part_g3_base_cover.scad` | `part_g3_base_cover.stl` | 1 | Electronics floor, foot pads | Flat | none |
 | C1 | `coupon_1_sector.scad` | *to write* | 1 | 45 deg slice of deck + one divider + pilot post: proves the running and sweep gaps | as modelled | none |
 | C2 | `coupon_2_servo_fit.scad` | *to write* | 1 | MG90S pocket + horn pocket + hub hex socket: proves the drive train fits | as modelled | none |
 | C3 | `coupon_3_chute_dock.scad` | *to write* | 1 | Chute lip + tray mouth: proves the flush dock | as modelled | none |
 
+Every part module works in assembly coordinates so the preview can use it as-is;
+each file's top-level call applies that part's print orientation, which is what
+`--stl` exports. So the STLs load onto the bed ready to slice — do not re-orient
+them — while the preview still shows the parts where they actually sit.
+
 Shared: `parameters_v3.scad`, `lib_v3.scad`, `assembly_preview_v3.scad`,
-`render_all_v3.sh` (previews by default, `--stl` to export).
+`check_drop_path.scad` (section 11), `render_all_v3.sh` (previews by default,
+`--stl` to export).
 
 ---
 
@@ -140,9 +146,11 @@ Discharge and chute:
 | Park margin | +/- 6.2 deg, derived not asserted |
 | Lead-in relief | 1.2 mm on the opening's top face |
 | Chute inside width | 14 mm at the deck, 32 mm from mid-ramp out |
-| Ramp | 38-42 deg top surface; floor thickens 2.4 to 6.5 mm so the *underside* stays 40-42 deg |
-| Wall notch | 32.8 mm wide, z 8 to 52 — full height, so no ledge can shelf a tablet; 0.4 mm wider than the chute so their faces are not coplanar |
-| Chute lip | z = 8 mm at y = 70, overhanging the tray by 2 mm |
+| Ramp | One continuous surface, y = 14 to 70. Starts *inside* the opening's 16 mm inner radius, so every tablet lands on ramp, never on its leading edge |
+| Ramp slope | 38-42 deg on top; floor thickens 2.4 to 6.5 mm so the *underside* stays 40-42 deg |
+| Wall notch | 32.8 mm wide, z 4 to 52. Cut as a box **minus the chute solid**, so the ramp and the chute's walls cannot be breached; only housing wall is removed |
+| Notch hoop strip | Wall kept below z = 4 — closes the first layers into a full ring and stiffens the two wall ends |
+| Chute lip | z = 8 mm at y = 70, overhanging the tray by 2 mm; tray mouth wall 3 mm, so 1.5 mm of clearance under the lip |
 
 Drive train:
 
@@ -219,9 +227,10 @@ Only then print A3 and B3.
 | G3 | C3 carousel, D3 shaft, E3 bracket | done — shaft clears the servo plate by 1.5 mm |
 | G4 | F3 tray, G3 base cover | done |
 | G5 | Previews: 7 parts + 2 details + 5 assembly views + annotated hero | done, in `previews/` |
-| G6 | Coupons C1-C3 | **to do** |
-| G7 | `render_all_v3.sh --stl` | **to do** — held pending sign-off |
-| G8 | Firmware constants | **to do** — see section 10 |
+| G6 | Ramp continuity | done — `check_drop_path.scad`, see section 11 |
+| G7 | `render_all_v3.sh --stl` | done — 7 STLs in `stl/`, each watertight, each in its print orientation |
+| G8 | Coupons C1-C3 | **to do** |
+| G9 | Firmware constants | **to do** — see section 10 |
 
 ---
 
@@ -238,7 +247,29 @@ needs constants rather than new logic:
 
 ---
 
-## 11. Risks
+## 11. Checking the ramp is continuous
+
+A tablet leaves the carousel through the deck's wedge and is then on its own until
+it reaches the tray. Anywhere the ramp is interrupted, it drops into the
+electronics bay instead — a silent partial dose, which is the worst failure this
+machine has. Two things guarantee it cannot happen, and one check proves it.
+
+The ramp starts at y = 14, inside the opening's 16 mm inner radius, so it extends
+under the whole wedge rather than starting at its edge. And the notch through the
+drum wall is cut as a box **minus the chute solid**, so the subtraction can only
+ever remove housing wall — retuning `chute_stations`, `chute_win_w` or the notch
+heights cannot put a hole in the floor.
+
+`check_drop_path.scad` proves it rather than assuming it. It intersects the base
+body with the exact volume a tablet can fall through (the wedge, extruded from the
+deck's underside down to the bay floor) and shows what material is inside it. Open
+it, F5, then look straight down: the wedge footprint must be filled edge to edge.
+Since the notch removes everything else under the wedge, anything you see there is
+ramp, and any daylight is a hole. Re-run it after touching the chute.
+
+---
+
+## 12. Risks
 
 | Risk | Mitigation |
 | :--- | :--- |
@@ -246,11 +277,12 @@ needs constants rather than new logic:
 | Deck warps and the carousel binds | Deck prints as the first layer; the 0.35 mm gap absorbs the rest; coupon C1 proves it before the 7 h print |
 | Servo parks outside +/- 6.2 deg | Use a positional servo; verify each stop by eye on the first fill |
 | Tablets wedge at the wedge edge | 1.2 mm lead-in relief on the opening's top face |
-| Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore |
+| Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore and a hoop strip under the notch |
+| A tablet drops through a gap in the ramp | The notch cannot breach the floor by construction, and `check_drop_path.scad` proves it — section 11 |
 
 ---
 
-## 12. Not in v3
+## 13. Not in v3
 
 - No gate or shutter. The park convention makes one unnecessary.
 - No homing sensor. Only needed if you insist on a continuous-rotation servo.

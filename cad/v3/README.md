@@ -1,7 +1,8 @@
 # v3 CAD set — integral deck, 8 open compartments, one servo
 
-The design in [`reference_design.png`](reference_design.png), modelled. Geometry is
-complete and renders clean; STLs are not exported yet (see `PLAN.md`, section 9).
+The design in [`reference_design.png`](reference_design.png), modelled. All seven
+parts are exported to `stl/`, each watertight and each in its print orientation.
+Print the coupons in `PLAN.md` section 8 before committing to the long prints.
 
 ![v3 annotated](previews/v3_hero_annotated.png)
 
@@ -20,6 +21,15 @@ turns on: `parameters_v3.scad` derives it and every part echoes it. Park further
 off than that and the wedge starts draining the next compartment, which is why v3
 wants a positional servo rather than a continuous-rotation one.
 
+From the wedge on, the tablet is on its own until it reaches the tray, so the ramp
+has to be unbroken the whole way. It starts at y = 14 — inside the wedge's 16 mm
+inner radius, so a tablet always lands on ramp rather than on its leading edge —
+and the notch through the drum wall is cut as a box *minus the chute solid*, which
+means retuning the chute can only ever remove housing wall, never floor. Open
+`check_drop_path.scad` and look straight down to confirm it: the wedge footprint
+must be filled edge to edge, because everything else under the wedge is cut away,
+so anything visible there is ramp and any daylight is a hole.
+
 ## Files
 
 | File | What |
@@ -34,7 +44,12 @@ wants a positional servo rather than a continuous-rotation one.
 | `part_f3_catch_tray.scad` | tray, mouth flush to the chute lip |
 | `part_g3_base_cover.scad` | electronics floor |
 | `assembly_preview_v3.scad` | preview only — flags at the top of the file |
+| `check_drop_path.scad` | proves the ramp is continuous under the wedge |
 | `render_all_v3.sh` | previews by default, `--stl` also exports STLs |
+
+Each part module works in assembly coordinates, and each file's top-level call
+applies that part's print orientation. So `stl/` loads onto the bed ready to slice
+— don't re-orient it — while the preview still shows every part where it sits.
 
 ## Renders
 
@@ -63,10 +78,10 @@ One view per part, plus two details worth their own frame:
 | `previews/part_a3_deck_body.png` | wedge, pilot post, bracket screw seats, joint ears |
 | `previews/part_a3_deck_body_deck_wedge.png` | straight down the deck: the 24 deg wedge |
 | `previews/part_b3_base_body.png` | bay, chute, cover posts |
-| `previews/part_b3_base_body_chute.png` | ramp through the wall notch and the shoulder fins |
+| `previews/part_b3_base_body_chute.png` | the continuous ramp through the wall notch, and the shoulder fins |
 | `previews/part_c3_carousel.png` | hub and 8 dividers |
-| `previews/part_d3_drive_shaft.png` | shown in print orientation, head down |
-| `previews/part_e3_servo_bracket.png` | MG90S pocket, gusset, ribs |
+| `previews/part_d3_drive_shaft.png` | head down |
+| `previews/part_e3_servo_bracket.png` | MG90S pocket, gusset, ribs — flipped, flange plane on the bed |
 | `previews/part_f3_catch_tray.png` | cut-down mouth wall |
 | `previews/part_g3_base_cover.png` | electronics floor |
 
