@@ -240,20 +240,30 @@ Only then print A3 and B3.
 | G6 | Ramp continuity | done — `check_drop_path.scad`, see section 11 |
 | G7 | `render_all_v3.sh --stl` | done — 7 STLs in `stl/`, each watertight, each in its print orientation |
 | G8 | Coupons C1-C3 | done — cut from the real parts, exported to `stl/` |
-| G9 | Firmware constants | **to do** — see section 10 |
+| G9 | Firmware constants | done — see section 10 |
 
 ---
 
 ## 10. Firmware touch points
 
-`firmware/pill_dispenser/pill_dispenser.ino` already advances a carousel on a
-non-blocking `millis()` state machine and detaches the servo between doses, so v3
-needs constants rather than new logic:
+`firmware/pill_dispenser/pill_dispenser.ino` is on the v3 mechanism:
 
-- 45 deg per dose, absolute positions rather than timed steps
+- 45 deg per dose, absolute stops rather than timed steps
 - park position = the opening's centre, so the emptied bin covers the wedge
-- settle dwell after each step before the vision check reads the tray
-- the v1 latch servo channel is unused in v3 and can be dropped
+- 600 ms dwell after each step for the dose to reach the tray, before the vision
+  check reads it
+- the v1 latch servo is gone; D10 is free
+- `PARK_TRIM_DEG` trims all five stops together for the horn's mounting offset,
+  and a `static_assert` fails the build if the trim pushes a stop past 180
+
+The consequence worth planning around: a 180 deg servo geared 1:1 to the carousel
+reaches five stops, so a fill is **four doses**. The fifth `DISPENSE` is refused
+with `ERR_MAGAZINE_EMPTY` rather than pushed into the servo's end stop, and
+`REZERO` sweeps back to stop 0 — safe only because the compartments it crosses are
+the four just emptied. All 8 bins per fill needs a continuous-rotation servo plus a
+lever microswitch to re-zero, which is the upgrade named in section 2.
+
+`firmware/test/run.sh` proves all of that on the host, with no board.
 
 ---
 
