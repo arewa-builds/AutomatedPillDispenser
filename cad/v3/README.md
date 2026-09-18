@@ -1,8 +1,9 @@
 # v3 CAD set — integral deck, 8 open compartments, one servo
 
 The design in [`reference_design.png`](reference_design.png), modelled. All seven
-parts are exported to `stl/`, each watertight and each in its print orientation.
-Print the coupons in `PLAN.md` section 8 before committing to the long prints.
+parts plus three test coupons are exported to `stl/`, each watertight and each in
+its print orientation. **Print the coupons first** — about 90 minutes that
+de-risks 24 hours of printing. See `PLAN.md` section 8.
 
 ![v3 annotated](previews/v3_hero_annotated.png)
 
@@ -45,6 +46,9 @@ so anything visible there is ramp and any daylight is a hole.
 | `part_g3_base_cover.scad` | electronics floor |
 | `assembly_preview_v3.scad` | preview only — flags at the top of the file |
 | `check_drop_path.scad` | proves the ramp is continuous under the wedge |
+| `coupon_1_sector.scad` | deck + carousel sectors: running gap, sweep gap |
+| `coupon_2_drive_train.scad` | servo plate, shaft, hub socket: the three fits |
+| `coupon_3_chute_dock.scad` | chute lip + tray mouth: the dock |
 | `render_all_v3.sh` | previews by default, `--stl` also exports STLs |
 
 Each part module works in assembly coordinates, and each file's top-level call
@@ -84,6 +88,9 @@ One view per part, plus two details worth their own frame:
 | `previews/part_e3_servo_bracket.png` | MG90S pocket, gusset, ribs — flipped, flange plane on the bed |
 | `previews/part_f3_catch_tray.png` | cut-down mouth wall |
 | `previews/part_g3_base_cover.png` | electronics floor |
+| `previews/coupon_1_sector.png` | C1, both sectors nested on the bed |
+| `previews/coupon_2_drive_train.png` | C2, plate pad + shaft + hub puck |
+| `previews/coupon_3_chute_dock.png` | C3, chute exit + tray mouth |
 
 Blue faces are outside surfaces, orange faces are cut surfaces — the same
 convention as the v1 and v2 preview sets.

@@ -45,6 +45,22 @@ for entry in "${PART_VIEWS[@]}"; do
     fi
 done
 
+# Test coupons. Small pieces cut from the real parts — see PLAN.md section 8.
+COUPON_VIEWS=(
+    "coupon_1_sector|0,0,8,55,0,200,290"
+    "coupon_2_drive_train|15,10,10,56,0,200,230"
+    "coupon_3_chute_dock|0,72,12,64,0,195,240"
+)
+
+for entry in "${COUPON_VIEWS[@]}"; do
+    p=${entry%%|*}; cam=${entry##*|}
+    echo "--- $p"
+    run -o "$OUT/$p.png" --imgsize=1200,950 --colorscheme=Tomorrow --camera="$cam" "$p.scad"
+    if [[ "$WITH_STL" == "--stl" ]]; then
+        run -o "$STL/$p.stl" "$p.scad"
+    fi
+done
+
 for entry in "${DETAIL_VIEWS[@]}"; do
     IFS='|' read -r p tag cam <<< "$entry"
     echo "--- $p ($tag)"

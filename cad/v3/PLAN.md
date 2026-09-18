@@ -98,9 +98,9 @@ Seven functional parts, three test coupons.
 | 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | Wall pad + gusset + ribbed arm + MG90S plate | Flipped, flange plane down: the pad's, arm's and servo plate's top faces are coplanar, so they form one flat footprint | none |
 | 6 | `part_f3_catch_tray.scad` | `part_f3_catch_tray.stl` | 1 | Tray, mouth wall cut down to the chute lip | Flat | none |
 | 7 | `part_g3_base_cover.scad` | `part_g3_base_cover.stl` | 1 | Electronics floor, foot pads | Flat | none |
-| C1 | `coupon_1_sector.scad` | *to write* | 1 | 45 deg slice of deck + one divider + pilot post: proves the running and sweep gaps | as modelled | none |
-| C2 | `coupon_2_servo_fit.scad` | *to write* | 1 | MG90S pocket + horn pocket + hub hex socket: proves the drive train fits | as modelled | none |
-| C3 | `coupon_3_chute_dock.scad` | *to write* | 1 | Chute lip + tray mouth: proves the flush dock | as modelled | none |
+| C1 | `coupon_1_sector.scad` | `coupon_1_sector.stl` | 1 | 74 deg deck sector with the wedge and pilot post + 104 deg carousel sector with the whole hub: proves the running and sweep gaps | laid out, both flat | none |
+| C2 | `coupon_2_drive_train.scad` | `coupon_2_drive_train.stl` | 1 | Bracket's servo plate + the real D3 shaft + the hub's socket end: proves the three drive-train fits | laid out, shaft head down | brim under the shaft |
+| C3 | `coupon_3_chute_dock.scad` | `coupon_3_chute_dock.stl` | 1 | Chute exit with the lip + the tray's mouth wall: proves the dock and the ramp in plastic | laid out, both as modelled | none |
 
 Every part module works in assembly coordinates so the preview can use it as-is;
 each file's top-level call applies that part's print orientation, which is what
@@ -169,13 +169,14 @@ Drive train:
 
 | Part | Est. filament | Est. time |
 | :--- | ---: | ---: |
+| C1-C3 coupons | ~30 g | ~1.5 h |
 | A3 deck body | ~88 g | ~7 h |
 | B3 base body | ~85 g | ~7 h |
 | C3 carousel | ~35 g | ~3 h |
 | F3 tray | ~25 g | ~2.5 h |
 | G3 base cover | ~25 g | ~1.5 h |
 | E3 bracket + D3 shaft | ~23 g | ~2 h |
-| **Total** | **~280 g** | **~23 h** |
+| **Total** | **~310 g** | **~24.5 h** |
 
 PLA, 0.4 mm nozzle, 0.2 mm layers, 3 perimeters, 20-25 % infill, no supports on
 any part. Iron the deck body's top face if your slicer can — that is the running
@@ -202,17 +203,26 @@ No bearings, no rods, no gears, no second servo.
 
 ## 8. Print the coupons first
 
-About 40 minutes of printing that de-risks 23 hours:
+About 90 minutes of printing that de-risks 23 hours. Each coupon is cut from the
+real parts, so it carries the real dimensions rather than a copy of them, and each
+one isolates the fits that a render cannot prove. Full instructions are in the
+header of each file.
 
-1. **C1 sector** — drop the carousel slice onto the deck slice and spin it.
-   Looking for no rub on the deck, no rub on the bore, and a tablet that cannot
-   slip under a divider. If it rubs, `car_gap` and the sweep gap change and
-   nothing else does.
-2. **C2 drive train** — the MG90S must drop into the bracket pocket without
-   forcing, the horn must seat in the shaft head, and the hex must engage the hub
-   with a little slop but no wobble.
-3. **C3 chute dock** — the tray mouth must clear the chute lip with no step for a
-   tablet to catch on.
+1. **C1 sector** (`coupon_1_sector.scad`) — drop the carousel sector onto the deck
+   sector and spin it. Looking for no rub on the deck, no rub on the bore, no
+   rocking, and a tablet that sweeps rather than slipping under a divider. If it
+   rubs on the deck, `car_gap` changes; if it rubs on the bore, the 1.4 mm in
+   `car_od` changes. Nothing else does.
+2. **C2 drive train** (`coupon_2_drive_train.scad`) — the MG90S must drop into the
+   bracket pocket without forcing, the horn must seat flush in the shaft head, and
+   the hex must engage the hub with a little slop but no wobble. Stacking all
+   three also measures the shaft head's 1.5 mm clearance under the servo plate,
+   which is the one clearance a render can flatter.
+3. **C3 chute dock** (`coupon_3_chute_dock.scad`) — the lip must overhang into the
+   tray with clearance over the mouth wall, and a tablet rolled down the ramp must
+   land on the tray floor without stopping on the lip or catching on the wall.
+   Sight along the ramp against the light: this is where you confirm in plastic
+   what section 11 proves in CAD.
 
 Only then print A3 and B3.
 
@@ -229,7 +239,7 @@ Only then print A3 and B3.
 | G5 | Previews: 7 parts + 2 details + 5 assembly views + annotated hero | done, in `previews/` |
 | G6 | Ramp continuity | done — `check_drop_path.scad`, see section 11 |
 | G7 | `render_all_v3.sh --stl` | done — 7 STLs in `stl/`, each watertight, each in its print orientation |
-| G8 | Coupons C1-C3 | **to do** |
+| G8 | Coupons C1-C3 | done — cut from the real parts, exported to `stl/` |
 | G9 | Firmware constants | **to do** — see section 10 |
 
 ---
