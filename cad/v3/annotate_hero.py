@@ -35,7 +35,7 @@ LABELS = [
     ('R', (1032, 612), 'Two printed bodies,', ['three screwed ears. Split here so', 'both halves print support-free'], 810, INK),
     ('L', (565, 455), '8 open compartments', ['Dividers sweep 0.35 mm', 'above the deck'], 160, INK),
     ('L', (706, 600), '24\u00b0 discharge wedge', ['This bin has just dumped. At rest it', 'covers the wedge: \u00b16\u00b0 of park margin'], 380, RED),
-    ('L', (612, 795), '45\u00b0 chute, integral', ['Wall opens from the deck down,', 'so no ledge can shelf a tablet'], 620, INK),
+    ('L', (612, 795), '45\u00b0 chute, integral', ['One unbroken ramp from the', 'wedge to the tray lip'], 620, INK),
     ('L', (300, 1045), 'Catch tray', ['Mouth wall cut down; the chute', 'lip overhangs into the well'], 860, INK),
 ]
 
