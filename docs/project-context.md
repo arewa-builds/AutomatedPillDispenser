@@ -11,7 +11,7 @@
 | Item | Specification / Purpose | Estimated Cost (USD) |
 | :--- | :--- | ---: |
 | Microcontroller | Arduino Nano 33 BLE (BLE & sensor onboard) | $26.00 |
-| Actuators | MG90S Metal-Gear Micro Servos (2-pack for carousel & latch) | $12.00 |
+| Actuators | MG90S Metal-Gear Micro Servos, **positional** (2-pack; the v3 mechanism drives the carousel with one and keeps the other as a spare) | $12.00 |
 | Camera | Built-in laptop camera (preferred) **or** 1080p USB Webcam / ESP32-CAM | $0.00 – $20.00 |
 | Power Supply | 3.7V 500mAh LiPo Battery + USB-C TP4056 Charger Board | $10.00 |
 | Enclosure & Frame | 3D Printable Filament (PLA/PETG) / Hardware fasteners | $15.00 |
@@ -35,7 +35,7 @@
 ### Week 1: Physical Prototype & Microcontroller Firmware
 **Focus:** Assembling the physical mechanism and proving local servo control.  
 **Days 1–2:** Source hardware; download or modify open-source carousel STL files for 3D printing.  
-**Days 3–4:** Flash Arduino Nano 33 BLE. Write C++ firmware for MG90S indexing + release latching.  
+**Days 3–4:** Flash Arduino Nano 33 BLE. Write C++ firmware for MG90S indexing — absolute 45° stops, no latch; the v3 deck's park convention replaces it.  
 **Days 5–7:** Wire LiPo + TP4056. Test dispensing repeatability with candy/dummy pills over Serial.  
 **Milestone 1:** Reliable physical dispenser that drops a single pill on command.
 

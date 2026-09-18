@@ -10,7 +10,7 @@ Medication non-adherence costs the healthcare system billions and hits elderly a
 
 | Layer | Stack | Responsibility |
 | :--- | :--- | :--- |
-| Embedded | Arduino Nano 33 BLE, 2× MG90S, LiPo + TP4056 | Carousel index + latch release |
+| Embedded | Arduino Nano 33 BLE, MG90S (positional), LiPo + TP4056 | Carousel indexing — 45° per dose, absolute stops |
 | Edge CV | Python 3.10+, OpenCV, MediaPipe, PySerial | Face gate + pill contour/color/count |
 | Data | Databricks Delta Lake (Bronze → Silver → Gold) | Telemetry ingest & compliance transforms |
 | ML / BI | scikit-learn, MLflow, Power BI Desktop | Adherence risk forecast + clinical KPIs |
