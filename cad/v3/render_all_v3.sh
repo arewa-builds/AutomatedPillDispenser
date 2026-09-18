@@ -16,22 +16,23 @@ mkdir -p "$OUT"
 
 run() { if command -v xvfb-run >/dev/null 2>&1; then xvfb-run -a openscad "$@"; else openscad "$@"; fi; }
 
-# Parts sit in assembly coordinates, not at the origin, so each one gets an
-# explicit look-at point and distance rather than relying on --viewall.
+# Each part file renders in its PRINT orientation (the modules themselves work in
+# assembly coordinates), and none of them lands centred on the origin, so every
+# view gets an explicit look-at point and distance rather than using --viewall.
 #   name | camera (transx,transy,transz,rotx,roty,rotz,dist)
 PART_VIEWS=(
-    "part_a3_deck_body|0,-3,73,58,0,25,300"
+    "part_a3_deck_body|0,-3,21,58,0,25,300"
     "part_b3_base_body|0,10,26,62,0,200,320"
     "part_c3_carousel|0,0,13,58,0,205,250"
     "part_d3_drive_shaft|0,0,15,62,0,205,90"
-    "part_e3_servo_bracket|0,-30,92,62,0,215,175"
+    "part_e3_servo_bracket|39,0,20,62,0,325,210"
     "part_f3_catch_tray|0,99,7,60,0,205,200"
     "part_g3_base_cover|0,0,1.5,55,0,205,260"
 )
 
 # Extra detail views of single parts.
 DETAIL_VIEWS=(
-    "part_a3_deck_body|deck_wedge|0,0,73,0,0,0,360"
+    "part_a3_deck_body|deck_wedge|0,0,21,0,0,0,360"
     "part_b3_base_body|chute|0,22,22,58,0,160,300"
 )
 
