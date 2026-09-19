@@ -125,22 +125,27 @@ brk_web_h      = 26.0;                     // gusset depth at the wall
 
 // ---------------------------------------------------------------- chute (B3)
 chute_wall     = 2.4;
-// The notch is only as wide as the pill passage, so the chute's own side walls
-// overlap the remaining drum wall and fuse into it. Cut it any wider and the
-// chute floats free of the housing.
-// 0.4 mm wider than the chute's inside width so the notch's cut faces are not
-// coplanar with the chute's wall faces. The walls still overlap the drum wall by
-// 2.0 mm, which is what fuses the chute into the housing.
+// The pill passage plus 0.4 mm, so the notch's cut faces land inside the chute's
+// side walls rather than coplanar with their inner faces. The notch subtracts
+// the chute solid, so those walls keep their full 2.4 mm and still overlap the
+// drum wall by 2.0 mm — that overlap is what fuses the chute into the housing.
 chute_win_w    = 32.8;
-chute_win_z0   = 8.0;                            // below the ramp's underside
-chute_win_z1   = deck_z;                         // open right up to the deck
+// The notch is cut as a box MINUS the ramp solid, so it can never breach the
+// floor. z0 leaves a hoop strip along the bottom of the wall — it closes the
+// first layers into a full ring when printing and stiffens the two wall ends
+// either side of the notch. It sits well below the ramp's underside.
+chute_win_z0   = 4.0;
+chute_win_z1   = deck_z;
 
 // [ y, floor top z, inside width, side-wall top z, floor thickness ]
 // The floor thickens toward the exit so its UNDERSIDE runs at 40-42 deg rather
 // than following the 38-40 deg top surface: it keeps the overhang printable and
 // puts the material where the chute cantilevers out of the wall.
+// Station 0 sits at y = 14, inside the wedge's inner radius of 16, so the ramp
+// underlaps the opening: every pill through the wedge lands on ramp, never on
+// the ramp's leading edge.
 chute_stations = [
-    [17.0, 52.0, 14.0, 51.9, 2.4],
+    [14.0, 52.0, 14.0, 51.9, 2.4],
     [45.0, 30.0, 32.0, 51.8, 6.0],
     [57.0, 19.0, 32.0, 36.0, 6.0],
     [70.0,  8.0, 32.0, 24.0, 6.5],
@@ -152,7 +157,7 @@ tray_l         = 62.0;
 tray_w         = 78.0;
 tray_floor     = 2.0;
 tray_h         = 14.0;
-tray_mouth_h   = 4.0;                      // cut-down wall; the chute lip overhangs it
+tray_mouth_h   = 3.0;                      // cut-down wall, 1.5 mm under the chute lip
 
 // ---------------------------------------------------------------- base (G3)
 base_t         = 3.0;

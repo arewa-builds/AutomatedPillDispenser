@@ -91,19 +91,25 @@ Seven functional parts, three test coupons.
 
 | # | Source file | STL | Qty | Function | Print orientation | Supports |
 | ---: | :--- | :--- | ---: | :--- | :--- | :--- |
-| 1 | `part_a3_deck_body.scad` | `part_a3_deck_body.stl` | 1 | Drum wall + integral deck + 24 deg wedge + pilot post + bracket screw seats + joint ears | As modelled, deck underside down | none |
-| 2 | `part_b3_base_body.scad` | `part_b3_base_body.stl` | 1 | Bay + 45 deg chute + wall notch + shoulder fins + cover posts + cable port | As modelled, open end down | none |
+| 1 | `part_a3_deck_body.scad` | `part_a3_deck_body.stl` | 1 | Drum wall + integral deck + 24 deg wedge + pilot post + bracket screw seats + joint ears | Deck underside down | none |
+| 2 | `part_b3_base_body.scad` | `part_b3_base_body.stl` | 1 | Bay + 45 deg chute + wall notch + shoulder fins + cover posts + cable port | Open end down, as modelled | none |
 | 3 | `part_c3_carousel.scad` | `part_c3_carousel.stl` | 1 | Hub + 8 dividers, no floor, hex socket + pilot journal | Divider ends and hub flat on the bed | none |
-| 4 | `part_d3_drive_shaft.scad` | `part_d3_drive_shaft.stl` | 1 | Horn pocket, column, hex foot | Head down (already flipped in the file) | brim |
-| 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | Wall pad + gusset + ribbed arm + MG90S plate | On its side, arm's 22 mm face on the bed | none |
+| 4 | `part_d3_drive_shaft.scad` | `part_d3_drive_shaft.stl` | 1 | Horn pocket, column, hex foot | Head down | brim |
+| 5 | `part_e3_servo_bracket.scad` | `part_e3_servo_bracket.stl` | 1 | Wall pad + gusset + ribbed arm + MG90S plate | Flipped, flange plane down: the pad's, arm's and servo plate's top faces are coplanar, so they form one flat footprint | none |
 | 6 | `part_f3_catch_tray.scad` | `part_f3_catch_tray.stl` | 1 | Tray, mouth wall cut down to the chute lip | Flat | none |
 | 7 | `part_g3_base_cover.scad` | `part_g3_base_cover.stl` | 1 | Electronics floor, foot pads | Flat | none |
-| C1 | `coupon_1_sector.scad` | *to write* | 1 | 45 deg slice of deck + one divider + pilot post: proves the running and sweep gaps | as modelled | none |
-| C2 | `coupon_2_servo_fit.scad` | *to write* | 1 | MG90S pocket + horn pocket + hub hex socket: proves the drive train fits | as modelled | none |
-| C3 | `coupon_3_chute_dock.scad` | *to write* | 1 | Chute lip + tray mouth: proves the flush dock | as modelled | none |
+| C1 | `coupon_1_sector.scad` | `coupon_1_sector.stl` | 1 | 74 deg deck sector with the wedge and pilot post + 104 deg carousel sector with the whole hub: proves the running and sweep gaps | laid out, both flat | none |
+| C2 | `coupon_2_drive_train.scad` | `coupon_2_drive_train.stl` | 1 | Bracket's servo plate + the real D3 shaft + the hub's socket end: proves the three drive-train fits | laid out, shaft head down | brim under the shaft |
+| C3 | `coupon_3_chute_dock.scad` | `coupon_3_chute_dock.stl` | 1 | Chute exit with the lip + the tray's mouth wall: proves the dock and the ramp in plastic | laid out, both as modelled | none |
+
+Every part module works in assembly coordinates so the preview can use it as-is;
+each file's top-level call applies that part's print orientation, which is what
+`--stl` exports. So the STLs load onto the bed ready to slice — do not re-orient
+them — while the preview still shows the parts where they actually sit.
 
 Shared: `parameters_v3.scad`, `lib_v3.scad`, `assembly_preview_v3.scad`,
-`render_all_v3.sh` (previews by default, `--stl` to export).
+`check_drop_path.scad` (section 11), `render_all_v3.sh` (previews by default,
+`--stl` to export).
 
 ---
 
@@ -140,9 +146,11 @@ Discharge and chute:
 | Park margin | +/- 6.2 deg, derived not asserted |
 | Lead-in relief | 1.2 mm on the opening's top face |
 | Chute inside width | 14 mm at the deck, 32 mm from mid-ramp out |
-| Ramp | 38-42 deg top surface; floor thickens 2.4 to 6.5 mm so the *underside* stays 40-42 deg |
-| Wall notch | 32.8 mm wide, z 8 to 52 — full height, so no ledge can shelf a tablet; 0.4 mm wider than the chute so their faces are not coplanar |
-| Chute lip | z = 8 mm at y = 70, overhanging the tray by 2 mm |
+| Ramp | One continuous surface, y = 14 to 70. Starts *inside* the opening's 16 mm inner radius, so every tablet lands on ramp, never on its leading edge |
+| Ramp slope | 38-42 deg on top; floor thickens 2.4 to 6.5 mm so the *underside* stays 40-42 deg |
+| Wall notch | 32.8 mm wide, z 4 to 52. Cut as a box **minus the chute solid**, so the ramp and the chute's walls cannot be breached; only housing wall is removed |
+| Notch hoop strip | Wall kept below z = 4 — closes the first layers into a full ring and stiffens the two wall ends |
+| Chute lip | z = 8 mm at y = 70, overhanging the tray by 2 mm; tray mouth wall 3 mm, so 1.5 mm of clearance under the lip |
 
 Drive train:
 
@@ -161,13 +169,14 @@ Drive train:
 
 | Part | Est. filament | Est. time |
 | :--- | ---: | ---: |
+| C1-C3 coupons | ~30 g | ~1.5 h |
 | A3 deck body | ~88 g | ~7 h |
 | B3 base body | ~85 g | ~7 h |
 | C3 carousel | ~35 g | ~3 h |
 | F3 tray | ~25 g | ~2.5 h |
 | G3 base cover | ~25 g | ~1.5 h |
 | E3 bracket + D3 shaft | ~23 g | ~2 h |
-| **Total** | **~280 g** | **~23 h** |
+| **Total** | **~310 g** | **~24.5 h** |
 
 PLA, 0.4 mm nozzle, 0.2 mm layers, 3 perimeters, 20-25 % infill, no supports on
 any part. Iron the deck body's top face if your slicer can — that is the running
@@ -194,17 +203,26 @@ No bearings, no rods, no gears, no second servo.
 
 ## 8. Print the coupons first
 
-About 40 minutes of printing that de-risks 23 hours:
+About 90 minutes of printing that de-risks 23 hours. Each coupon is cut from the
+real parts, so it carries the real dimensions rather than a copy of them, and each
+one isolates the fits that a render cannot prove. Full instructions are in the
+header of each file.
 
-1. **C1 sector** — drop the carousel slice onto the deck slice and spin it.
-   Looking for no rub on the deck, no rub on the bore, and a tablet that cannot
-   slip under a divider. If it rubs, `car_gap` and the sweep gap change and
-   nothing else does.
-2. **C2 drive train** — the MG90S must drop into the bracket pocket without
-   forcing, the horn must seat in the shaft head, and the hex must engage the hub
-   with a little slop but no wobble.
-3. **C3 chute dock** — the tray mouth must clear the chute lip with no step for a
-   tablet to catch on.
+1. **C1 sector** (`coupon_1_sector.scad`) — drop the carousel sector onto the deck
+   sector and spin it. Looking for no rub on the deck, no rub on the bore, no
+   rocking, and a tablet that sweeps rather than slipping under a divider. If it
+   rubs on the deck, `car_gap` changes; if it rubs on the bore, the 1.4 mm in
+   `car_od` changes. Nothing else does.
+2. **C2 drive train** (`coupon_2_drive_train.scad`) — the MG90S must drop into the
+   bracket pocket without forcing, the horn must seat flush in the shaft head, and
+   the hex must engage the hub with a little slop but no wobble. Stacking all
+   three also measures the shaft head's 1.5 mm clearance under the servo plate,
+   which is the one clearance a render can flatter.
+3. **C3 chute dock** (`coupon_3_chute_dock.scad`) — the lip must overhang into the
+   tray with clearance over the mouth wall, and a tablet rolled down the ramp must
+   land on the tray floor without stopping on the lip or catching on the wall.
+   Sight along the ramp against the light: this is where you confirm in plastic
+   what section 11 proves in CAD.
 
 Only then print A3 and B3.
 
@@ -219,26 +237,62 @@ Only then print A3 and B3.
 | G3 | C3 carousel, D3 shaft, E3 bracket | done — shaft clears the servo plate by 1.5 mm |
 | G4 | F3 tray, G3 base cover | done |
 | G5 | Previews: 7 parts + 2 details + 5 assembly views + annotated hero | done, in `previews/` |
-| G6 | Coupons C1-C3 | **to do** |
-| G7 | `render_all_v3.sh --stl` | **to do** — held pending sign-off |
-| G8 | Firmware constants | **to do** — see section 10 |
+| G6 | Ramp continuity | done — `check_drop_path.scad`, see section 11 |
+| G7 | `render_all_v3.sh --stl` | done — 7 STLs in `stl/`, each watertight, each in its print orientation |
+| G8 | Coupons C1-C3 | done — cut from the real parts, exported to `stl/` |
+| G9 | Firmware constants | done — see section 10 |
 
 ---
 
 ## 10. Firmware touch points
 
-`firmware/pill_dispenser/pill_dispenser.ino` already advances a carousel on a
-non-blocking `millis()` state machine and detaches the servo between doses, so v3
-needs constants rather than new logic:
+`firmware/pill_dispenser/pill_dispenser.ino` is on the v3 mechanism:
 
-- 45 deg per dose, absolute positions rather than timed steps
+- 45 deg per dose, absolute stops rather than timed steps
 - park position = the opening's centre, so the emptied bin covers the wedge
-- settle dwell after each step before the vision check reads the tray
-- the v1 latch servo channel is unused in v3 and can be dropped
+- 600 ms dwell after each step for the dose to reach the tray, before the vision
+  check reads it
+- the v1 latch servo is gone; D10 is free
+- `PARK_TRIM_DEG` trims all five stops together for the horn's mounting offset,
+  and a `static_assert` fails the build if the trim pushes a stop past 180
+
+The consequence worth planning around: a 180 deg servo geared 1:1 to the carousel
+reaches five stops, so a fill is **four doses**. The fifth `DISPENSE` is refused
+with `ERR_MAGAZINE_EMPTY` rather than pushed into the servo's end stop, and
+`REZERO` sweeps back to stop 0 — safe only because the compartments it crosses are
+the four just emptied. All 8 bins per fill needs a continuous-rotation servo plus a
+lever microswitch to re-zero, which is the upgrade named in section 2.
+
+`firmware/test/run.sh` proves all of that on the host, with no board.
 
 ---
 
-## 11. Risks
+## 11. Checking the ramp is continuous
+
+A tablet leaves the carousel through the deck's wedge and is then on its own until
+it reaches the tray. Anywhere the ramp is interrupted, it drops into the
+electronics bay instead — a silent partial dose, which is the worst failure this
+machine has. Two things guarantee it cannot happen, and one check proves it.
+
+The ramp starts at y = 14, inside the opening's 16 mm inner radius, so it extends
+under the whole wedge rather than starting at its edge. And the notch through the
+drum wall is cut as a box **minus the chute solid**, so the subtraction can only
+ever remove housing wall — retuning `chute_stations`, `chute_win_w` or the notch
+heights cannot put a hole in the floor.
+
+`previews/v3_chute.png` is the section that shows it, and
+`previews/v3_drop_path.png` shows the fall volume sitting on the ramp.
+
+`check_drop_path.scad` proves it rather than assuming it. It intersects the base
+body with the exact volume a tablet can fall through (the wedge, extruded from the
+deck's underside down to the bay floor) and shows what material is inside it. Open
+it, F5, then look straight down: the wedge footprint must be filled edge to edge.
+Since the notch removes everything else under the wedge, anything you see there is
+ramp, and any daylight is a hole. Re-run it after touching the chute.
+
+---
+
+## 12. Risks
 
 | Risk | Mitigation |
 | :--- | :--- |
@@ -246,11 +300,12 @@ needs constants rather than new logic:
 | Deck warps and the carousel binds | Deck prints as the first layer; the 0.35 mm gap absorbs the rest; coupon C1 proves it before the 7 h print |
 | Servo parks outside +/- 6.2 deg | Use a positional servo; verify each stop by eye on the first fill |
 | Tablets wedge at the wedge edge | 1.2 mm lead-in relief on the opening's top face |
-| Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore |
+| Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore and a hoop strip under the notch |
+| A tablet drops through a gap in the ramp | The notch cannot breach the floor by construction, and `check_drop_path.scad` proves it — section 11 |
 
 ---
 
-## 12. Not in v3
+## 13. Not in v3
 
 - No gate or shutter. The park convention makes one unnecessary.
 - No homing sensor. Only needed if you insist on a continuous-rotation servo.
