@@ -23,7 +23,11 @@ off than that and the wedge starts draining the next compartment, which is why v
 wants a positional servo rather than a continuous-rotation one.
 
 From the wedge on, the tablet is on its own until it reaches the tray, so the ramp
-has to be unbroken the whole way. It starts at y = 14 — inside the wedge's 16 mm
+has to be unbroken the whole way.
+
+![chute section](previews/v3_chute.png)
+
+It starts at y = 14 — inside the wedge's 16 mm
 inner radius, so a tablet always lands on ramp rather than on its leading edge —
 and the notch through the drum wall is cut as a box *minus the chute solid*, which
 means retuning the chute can only ever remove housing wall, never floor. Open
@@ -72,6 +76,8 @@ Assembly views:
 | `previews/v3_cutaway.png` | wall cut away over the chute |
 | `previews/v3_assembled.png` | as it sits on the desk |
 | `previews/v3_section.png` | half section: deck, running gap, chute, drive train |
+| `previews/v3_chute.png` | same section, closed in: the ramp unbroken from the wedge to the lip |
+| `previews/v3_drop_path.png` | the fall volume ghosted over the base body — `check_drop_path.scad` |
 | `previews/v3_top.png` | 8 bins and the discharge wedge |
 | `previews/v3_exploded.png` | assembly order |
 

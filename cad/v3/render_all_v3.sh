@@ -67,6 +67,12 @@ for entry in "${DETAIL_VIEWS[@]}"; do
     run -o "$OUT/${p}_${tag}.png" --imgsize=1100,1100 --colorscheme=Tomorrow --camera="$cam" "$p.scad"
 done
 
+# The drop-path check, rendered with the fall volume ghosted over the base body so
+# the preview set carries the evidence and not just the claim.
+echo "--- check: drop path"
+run -o "$OUT/v3_drop_path.png" --imgsize=1200,950 --colorscheme=Tomorrow \
+    -D MODE=2 --camera=0,16,24,58,0,190,340 check_drop_path.scad
+
 # Assembly views. Flags live at the top of assembly_preview_v3.scad; each view is
 # rendered from a throwaway copy with those flags rewritten.
 view() {              # view <name> <sed-expr> <camera> [imgsize]
@@ -81,6 +87,9 @@ view() {              # view <name> <sed-expr> <camera> [imgsize]
 view cutaway   's/^SHOW_BRACKET = .*/SHOW_BRACKET = true;/'                      0,14,44,60,0,205,440
 view assembled 's/^CUTAWAY    = .*/CUTAWAY    = false;/'                         0,10,46,62,0,205,460
 view section   's/^CUTAWAY    = true;/CUTAWAY = false;/; s/^SECTION    = .*/SECTION = true;/'  0,20,45,78,0,88,400
+# Same section, closed in on the chute: the one view that shows the ramp running
+# unbroken from under the deck's wedge to the lip over the tray.
+view chute     's/^CUTAWAY    = true;/CUTAWAY = false;/; s/^SECTION    = .*/SECTION = true;/'  0,36,33,82,0,88,280  1300,900
 view top       's/^CUTAWAY    = .*/CUTAWAY    = false;/; s/^SHOW_BRACKET = .*/SHOW_BRACKET = false;/'  0,0,60,0,0,0,330  1150,1150
 view exploded  's/^CUTAWAY    = .*/CUTAWAY    = false;/; s/^EXPLODED   = .*/EXPLODED   = true;/'       0,10,90,64,0,205,620
 

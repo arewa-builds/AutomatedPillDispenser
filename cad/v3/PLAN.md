@@ -280,6 +280,9 @@ drum wall is cut as a box **minus the chute solid**, so the subtraction can only
 ever remove housing wall — retuning `chute_stations`, `chute_win_w` or the notch
 heights cannot put a hole in the floor.
 
+`previews/v3_chute.png` is the section that shows it, and
+`previews/v3_drop_path.png` shows the fall volume sitting on the ramp.
+
 `check_drop_path.scad` proves it rather than assuming it. It intersects the base
 body with the exact volume a tablet can fall through (the wedge, extruded from the
 deck's underside down to the bay floor) and shows what material is inside it. Open
