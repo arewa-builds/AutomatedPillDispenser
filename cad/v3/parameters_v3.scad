@@ -140,7 +140,7 @@ chute_win_z1   = deck_z;                         // open right up to the deck
 // than following the 38-40 deg top surface: it keeps the overhang printable and
 // puts the material where the chute cantilevers out of the wall.
 chute_stations = [
-    [17.0, 52.0, 14.0, 51.9, 2.4],
+    [17.0, 52.0, 18.0, 51.9, 2.4],
     [45.0, 30.0, 32.0, 51.8, 6.0],
     [57.0, 19.0, 32.0, 36.0, 6.0],
     [70.0,  8.0, 32.0, 24.0, 6.5],
