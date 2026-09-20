@@ -1,7 +1,9 @@
 # v3 CAD set — integral deck, 8 open compartments, one servo
 
-The design in [`reference_design.png`](reference_design.png), modelled. Geometry is
-complete and renders clean; STLs are not exported yet (see `PLAN.md`, section 9).
+The design in [`reference_design.png`](reference_design.png), modelled. All seven
+parts plus three test coupons are exported to `stl/`, each watertight and each in
+its print orientation. **Print the coupons first** — about 90 minutes that
+de-risks 24 hours of printing. See `PLAN.md` section 8.
 
 ![v3 annotated](previews/v3_hero_annotated.png)
 
@@ -20,6 +22,28 @@ turns on: `parameters_v3.scad` derives it and every part echoes it. Park further
 off than that and the wedge starts draining the next compartment, which is why v3
 wants a positional servo rather than a continuous-rotation one.
 
+From the wedge on, the tablet is on its own until it reaches the tray, so the ramp
+has to be unbroken the whole way.
+
+![chute section](previews/v3_chute.png)
+
+It starts at y = 14 — inside the wedge's 16 mm
+inner radius, so a tablet always lands on ramp rather than on its leading edge —
+and the notch through the drum wall is cut as a box *minus the chute solid*, which
+means retuning the chute can only ever remove housing wall, never floor. Open
+`check_drop_path.scad` and look straight down to confirm it: the wedge footprint
+must be filled edge to edge, because everything else under the wedge is cut away,
+so anything visible there is ramp and any daylight is a hole.
+
+The other thing that has to hold is that the carousel can actually turn. Radial
+dividers sweep a whole solid ring — z 57.35 to 83.35, hub out to r 56.3 — so
+anything bolted down that reaches into it is a dead stop, not a tight fit. The
+bracket's pad and gusset are therefore derived off the divider tops rather than
+typed in, and the wall runs up to z 106 so both bracket screws land in wall that is
+above the sweep. `check_carousel_clearance.scad` proves it on the geometry: modes 0
+and 2 must render nothing, mode 1 only the pilot post, mode 3 only the shaft's hex
+foot.
+
 ## Files
 
 | File | What |
@@ -34,7 +58,16 @@ wants a positional servo rather than a continuous-rotation one.
 | `part_f3_catch_tray.scad` | tray, mouth flush to the chute lip |
 | `part_g3_base_cover.scad` | electronics floor |
 | `assembly_preview_v3.scad` | preview only — flags at the top of the file |
+| `check_drop_path.scad` | proves the ramp is continuous under the wedge |
+| `check_carousel_clearance.scad` | proves nothing fixed sits in the carousel's path |
+| `coupon_1_sector.scad` | deck + carousel sectors: running gap, sweep gap |
+| `coupon_2_drive_train.scad` | servo plate, shaft, hub socket: the three fits |
+| `coupon_3_chute_dock.scad` | chute lip + tray mouth: the dock |
 | `render_all_v3.sh` | previews by default, `--stl` also exports STLs |
+
+Each part module works in assembly coordinates, and each file's top-level call
+applies that part's print orientation. So `stl/` loads onto the bed ready to slice
+— don't re-orient it — while the preview still shows every part where it sits.
 
 ## Renders
 
@@ -53,6 +86,8 @@ Assembly views:
 | `previews/v3_cutaway.png` | wall cut away over the chute |
 | `previews/v3_assembled.png` | as it sits on the desk |
 | `previews/v3_section.png` | half section: deck, running gap, chute, drive train |
+| `previews/v3_chute.png` | same section, closed in: the ramp unbroken from the wedge to the lip |
+| `previews/v3_drop_path.png` | the fall volume ghosted over the base body — `check_drop_path.scad` |
 | `previews/v3_top.png` | 8 bins and the discharge wedge |
 | `previews/v3_exploded.png` | assembly order |
 
@@ -63,12 +98,15 @@ One view per part, plus two details worth their own frame:
 | `previews/part_a3_deck_body.png` | wedge, pilot post, bracket screw seats, joint ears |
 | `previews/part_a3_deck_body_deck_wedge.png` | straight down the deck: the 24 deg wedge |
 | `previews/part_b3_base_body.png` | bay, chute, cover posts |
-| `previews/part_b3_base_body_chute.png` | ramp through the wall notch and the shoulder fins |
+| `previews/part_b3_base_body_chute.png` | the continuous ramp through the wall notch, and the shoulder fins |
 | `previews/part_c3_carousel.png` | hub and 8 dividers |
-| `previews/part_d3_drive_shaft.png` | shown in print orientation, head down |
-| `previews/part_e3_servo_bracket.png` | MG90S pocket, gusset, ribs |
+| `previews/part_d3_drive_shaft.png` | head down |
+| `previews/part_e3_servo_bracket.png` | MG90S pocket, gusset, ribs — flipped, flange plane on the bed |
 | `previews/part_f3_catch_tray.png` | cut-down mouth wall |
 | `previews/part_g3_base_cover.png` | electronics floor |
+| `previews/coupon_1_sector.png` | C1, both sectors nested on the bed |
+| `previews/coupon_2_drive_train.png` | C2, plate pad + shaft + hub puck |
+| `previews/coupon_3_chute_dock.png` | C3, chute exit + tray mouth |
 
 Blue faces are outside surfaces, orange faces are cut surfaces — the same
 convention as the v1 and v2 preview sets.

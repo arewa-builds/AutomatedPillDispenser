@@ -64,7 +64,10 @@ module deck_body_v3() {
     }
 }
 
-deck_body_v3();
+// The module works in assembly coordinates so the preview can use it as-is; the
+// top-level call is the print orientation. Deck underside on the bed, drum wall
+// rising — the deck's top face and the wedge print with no supports.
+translate([0, 0, -deck_z]) deck_body_v3();
 
 echo(str("A3 deck body: OD ", h_od, ", deck top z ", deck_top, ", rim z ", rim_z));
 echo(str("A3 opening: ", open_deg, " deg, r ", open_r_in, "-", open_r_out));

@@ -66,6 +66,18 @@ module v3_servo() {
 }
 
 // ---------------------------------------------------------------- pills
+// Height of the ramp's top surface at a given y, interpolated from the station
+// table so the in-flight pills sit on the ramp whatever the chute is retuned to.
+function ramp_seg(y, i) =
+    chute_stations[i][1] + (y - chute_stations[i][0])
+    * (chute_stations[i + 1][1] - chute_stations[i][1])
+    / (chute_stations[i + 1][0] - chute_stations[i][0]);
+
+function ramp_top(y) =
+    y <= chute_stations[1][0] ? ramp_seg(y, 0)
+  : y <= chute_stations[2][0] ? ramp_seg(y, 1)
+  :                             ramp_seg(y, 2);
+
 module tablet(d = 7.5) { scale([1, 1, 0.42]) sphere(d = d); }
 module capsule(l = 10.0, d = 5.0) {
     rotate([0, 90, 0]) hull() {
@@ -95,14 +107,13 @@ module v3_pills() {
                             if (pill_sets[i][1] == 1) capsule(); else tablet();
         }
     }
-    // Dose in flight down the chute, and landed in the tray.
+    // Dose in flight down the chute, and landed in the tray. Follows the ramp's
+    // top surface, so it moves with chute_stations rather than hard-coded slopes.
     for (k = [0 : 5]) {
         y = 24 + k * 8.0;
-        z = y < 45 ? 52 - (y - 17) * 0.786
-          : y < 57 ? 30 - (y - 45) * 0.917
-          :          19 - (y - 57) * 0.846;
+        z = ramp_top(y);
         color("#f0b429")
-            translate([(k % 2 - 0.5) * 9, y, z + 2.4])
+            translate([(k % 2 - 0.5) * 9, y, z + 1.7])
                 rotate([-38, 0, 0]) tablet(7.0);
     }
     tn = 8;
