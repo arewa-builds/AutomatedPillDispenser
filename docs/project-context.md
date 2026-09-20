@@ -13,7 +13,7 @@
 | Microcontroller | Arduino Nano 33 BLE (BLE & sensor onboard) | $26.00 |
 | Actuators | MG90S Metal-Gear Micro Servos, **positional** (2-pack; the v3 mechanism drives the carousel with one and keeps the other as a spare) | $12.00 |
 | Camera | Built-in laptop camera (preferred) **or** 1080p USB Webcam / ESP32-CAM | $0.00 – $20.00 |
-| Power Supply | 3.7V 500mAh LiPo Battery + USB-C TP4056 Charger Board. Run the servo off 5 V (USB, or a 5 V bank) with a bulk capacitor across it: an MG90S is rated 4.8–6 V, and the bare cell sits under that — it still has ~3x the torque the carousel needs, but it is out of spec and the Nano's VIN wants 5 V anyway | $10.00 |
+| Power Supply | 3.7V 500mAh LiPo + USB-C TP4056 charger + 0.9–5V→5V boost module. The MG90S is rated 4.8–6 V and the bare cell sits under that, so the servo runs off the boost output (LiPo → TP4056 for its protection circuit → boost → servo V+) with a 470–1000 µF bulk cap across it. The Nano keeps USB power; ground is the only shared node. Wiring in `firmware/README.md` | $10.00 |
 | Enclosure & Frame | 3D Printable Filament (PLA/PETG) / Hardware fasteners | $15.00 |
 | Prototyping Essentials | Breadboard, jumper wires, resistors, calibration pills/candies | $10.00 |
 | **Subtotal Hardware** | | **$73.00 – $93.00** |
@@ -36,7 +36,7 @@
 **Focus:** Assembling the physical mechanism and proving local servo control.  
 **Days 1–2:** Source hardware; download or modify open-source carousel STL files for 3D printing.  
 **Days 3–4:** Flash Arduino Nano 33 BLE. Write C++ firmware for MG90S indexing — absolute 45° stops, no latch; the v3 deck's park convention replaces it.  
-**Days 5–7:** Wire LiPo + TP4056. Test dispensing repeatability with candy/dummy pills over Serial.  
+**Days 5–7:** Wire LiPo + TP4056 + boost module; bench-check the turns with `edge/bench_servo.py`. Test dispensing repeatability with candy/dummy pills over Serial.  
 **Milestone 1:** Reliable physical dispenser that drops a single pill on command.
 
 ### Week 2: Edge Computer Vision Engine (Python)

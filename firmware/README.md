@@ -76,7 +76,32 @@ will drop whatever sits above the discharge opening.
 | Red (V+) | External **5 V**, 1 A or better | A USB breakout, bench supply or power bank — **not** the Nano's 3V3 pin |
 | Brown (GND) | Nano **GND** *and* the 5 V supply's ground | The grounds must be common or the pulse has no reference |
 
-Two things bite here. The Nano 33 BLE's **`5V` pin is disconnected from the factory** —
+### Where the 5 V comes from
+
+The kit's 3.7 V LiPo is below the MG90S's 4.8–6 V rating, so the boost module is what
+makes the cell usable. Chain it like this — the cell never touches the servo directly:
+
+```
+LiPo JST ──> TP4056 B+/B− ──> TP4056 OUT+/OUT− ──> boost VIN+/VIN− ──> boost VOUT+ ──> servo RED
+                                                                        boost VOUT− ──┬─> servo BROWN
+                                                                                      └─> Nano GND
+```
+
+The TP4056 is in the chain for its protection circuit, not for charging: a boost module
+happily runs down to 0.9 V in and would flatten an unprotected cell past recovery. Even
+with it, stop at about 3.4 V rather than waiting for the 2.4 V cutoff.
+
+The Nano keeps its own USB power, which the serial link needs anyway. **Ground is the
+only node the two rails share** — nothing from the boost output goes near `3V3`, `5V`
+or `VIN`, so a servo brownout cannot reset the board mid-cycle.
+
+These small modules give roughly 500–600 mA at 5 V and an MG90S can pull more than that
+against a jam, so check the output holds above 4.5 V while a step runs. If it sags:
+1000 µF instead of 470 µF, or halve `SLEW_DEG_PER_S` to spread the same move over twice
+the time, or run the bench check off a USB power bank and save the LiPo for the untethered
+demo.
+
+Two more things bite here. The Nano 33 BLE's **`5V` pin is disconnected from the factory** —
 it only carries USB power once the `VUSB` solder jumper on the underside is bridged —
 so treat the servo's supply as external rather than expecting 5 V from the header. And
 a stall on a small cell browns the Nano out through the shared ground, which is why the
