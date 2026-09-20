@@ -82,10 +82,18 @@ The kit's 3.7 V LiPo is below the MG90S's 4.8–6 V rating, so the boost module 
 makes the cell usable. Chain it like this — the cell never touches the servo directly:
 
 ```
-LiPo JST ──> TP4056 B+/B− ──> TP4056 OUT+/OUT− ──> boost VIN+/VIN− ──> boost VOUT+ ──> servo RED
-                                                                        boost VOUT− ──┬─> servo BROWN
-                                                                                      └─> Nano GND
+LiPo JST ──> TP4056 B+/B− ──> TP4056 OUT+ ──> boost VI
+                              TP4056 OUT− ──> boost GND ──┬─> servo BROWN
+                                                          └─> Nano GND
+                                             boost VO  ────> servo RED
 ```
+
+The cheap boost modules have three pads in one row — `VI`, `GND`, `VO` — with input and
+output sharing that single ground, which is the shared node this wants anyway. It takes
+three wires: `OUT−` in, servo brown out, Nano `GND` out. Solder one pigtail to the pad
+and join the other two on a breadboard row rather than stacking three wires on a pad
+that size. On the HW-373 TP4056 all four pads sit along one edge, printed `OUT− B− B+
+OUT+`; the cell goes to the `B` pair, never to `OUT`.
 
 The TP4056 is in the chain for its protection circuit, not for charging: a boost module
 happily runs down to 0.9 V in and would flatten an unprotected cell past recovery. Even
