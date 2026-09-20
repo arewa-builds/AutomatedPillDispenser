@@ -64,20 +64,65 @@ printed PLA coupling, and the case most likely to overrun a stop on inertia.
 follows from it, so the timing and the motion cannot disagree. `SETTLE_MS` then
 holds the target before the tablet is allowed to move.
 
+## Bench bring-up — wiring and first turns
+
+Nano, servo, one 5 V supply. No carousel yet: run this with the drive shaft **out of
+the hub**, or with every bin empty, because a step is a real 45° carousel move and it
+will drop whatever sits above the discharge opening.
+
+| Servo lead | Goes to | Notes |
+| :--- | :--- | :--- |
+| Orange (signal) | Nano **D9** | 3.3 V logic drives an MG90S fine; if it twitches or ignores commands, put a level shifter on this line |
+| Red (V+) | External **5 V**, 1 A or better | A USB breakout, bench supply or power bank — **not** the Nano's 3V3 pin |
+| Brown (GND) | Nano **GND** *and* the 5 V supply's ground | The grounds must be common or the pulse has no reference |
+
+Two things bite here. The Nano 33 BLE's **`5V` pin is disconnected from the factory** —
+it only carries USB power once the `VUSB` solder jumper on the underside is bridged —
+so treat the servo's supply as external rather than expecting 5 V from the header. And
+a stall on a small cell browns the Nano out through the shared ground, which is why the
+sketch ramps every move; a 470–1000 µF capacitor across the servo's V+/GND, at the
+servo end, absorbs what is left.
+
+```bash
+arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:mbed_nano:nano33ble firmware/pill_dispenser
+python edge/bench_servo.py            # autodetects the port
+```
+
+`edge/bench_servo.py` is the bench harness for exactly this moment. Its default run
+greets the board, prints the calibration it derived, then steps a whole fill and
+rezeros, timing each move:
+
+```
+  calibration: CAL US=600..2400 TRAVEL=180.0 PLAY=2.58 TRIM=0.00 DOSES=3
+  step 1: ACK after 991 ms (45 deg from stop 0)
+  step 2: ACK after 990 ms (90 deg from stop 0)
+  step 3: ACK after 990 ms (135 deg from stop 0)
+  step 4: refused, magazine spent — correct after 3 doses
+  rezero: ACK after 1100 ms — shaft should be back on the mark
+```
+
+Mark the horn before you start. Each `ACK_DISPENSE` is one bin, so three steps is 135°
+of carousel and `REZERO` should bring the mark back where it began. A mark that does
+not return means the coupling is slipping on the horn, not a firmware problem. Other
+modes: `--ends` for the guided endpoint hunt below, `--sweep 600 2400 --step 200` to
+walk raw pulses, `--cmd "TRIM 3"` to send anything by hand, `--list` for the ports.
+
 ## Commissioning a servo
 
 Do this once per servo, with the carousel empty. It replaces four constants at the
 top of the sketch and one runtime trim.
 
-1. **Find the ends.** With the shaft out of the hub, `JOG` is not available yet, so
-   command pulses with any serial terminal sketch or start from the defaults
-   (600–2400 µs). Widen `US_MIN_SAFE` / `US_MAX_SAFE` in steps of 50 µs until the
-   output stops moving, then back off 50 µs from each end so it never buzzes
-   against its own stops.
-2. **Measure the travel.** Mark the horn, command each end, and measure the angle
-   swept. That is `TRAVEL_DEG`. Recompile: the sketch reports the doses per fill it
+1. **Find the ends.** `PULSE <us>` commands a raw pulse anywhere in 500–2500 µs, which
+   is wider than the calibrated ends on purpose: finding them is the point.
+   `python edge/bench_servo.py --ends` creeps outward from 1500 µs in 100 µs steps and
+   prints the last pulse that still moved the horn. Back off 50 µs from each end so the
+   servo never buzzes against its own stops, and put those in `US_MIN_SAFE` /
+   `US_MAX_SAFE`.
+2. **Measure the travel.** Mark the horn, `PULSE` each end, and measure the angle
+   swept with a protractor. That is `TRAVEL_DEG`. Recompile: the sketch reports the doses per fill it
    derives, and its `static_assert`s refuse a table that will not fit.
-3. **Align the park.** Assemble, fill one compartment, and `DISPENSE` once. With
+3. **Align the park.** `REZERO` first — `PULSE` leaves the stop unknown by design.
+   Then assemble, fill one compartment, and `DISPENSE` once. With
    the just-emptied compartment over the wedge, `JOG 2` / `JOG -2` until the
    divider gap is centred in the opening by eye. `STATUS` shows the trim you
    arrived at.
@@ -99,6 +144,7 @@ A superset of the v1 protocol, so hosts that only speak `DISPENSE` /
 | `SETSTOP n` | `ACK_SETSTOP` / `ERR_ARG` | Corrects the sketch's count **without moving** |
 | `TRIM d` | `ACK_TRIM <deg>` / `ERR_ARG` | Sets the park offset, ±9°, and re-seats the carousel on its stop |
 | `JOG d` | `ACK_TRIM <deg>` / `ERR_ARG` | Same, relative to the trim in force |
+| `PULSE us` | `ACK_PULSE <us>` / `ERR_ARG` / `ERR_BUSY` | Commissioning: ramps to a raw pulse in 500–2500 µs, then marks the magazine spent so no `DISPENSE` can follow a hand-jogged position |
 | `STATUS` | `STATE=s STOP=i/n ANGLE=d US=u TRIM=t DOSES=n` | |
 | `CAL` | `CAL US=a..b TRAVEL=t PLAY=p TRIM=t DOSES=n` | Also printed at boot |
 | `PING` | `PONG` | |
@@ -122,8 +168,9 @@ Compiles the sketch on the host against small stubs — fake clock, fake serial,
 recording servo — and drives it through every dose of a fill and the refusal after
 them, the ramp (monotonic, starting where it believed it was, ending on the pulse
 the park budget calls for), the play take-up flipping sign on a reverse sweep,
-`TRIM`/`JOG` authority and bounds, and a final sweep proving no pulse anywhere in
-the run left the servo's measured ends. 51 checks, needs only `g++`. See
+`TRIM`/`JOG` authority and bounds, `PULSE` reaching past the calibrated ends and
+locking out `DISPENSE` until the stop is re-established, and a sweep proving no pulse
+in normal operation left the servo's measured ends. 65 checks, needs only `g++`. See
 `firmware/test/host_harness.cpp`.
 
 This complements the toolchain check below rather than replacing it: one proves
