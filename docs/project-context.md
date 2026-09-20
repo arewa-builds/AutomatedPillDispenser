@@ -13,7 +13,7 @@
 | Microcontroller | Arduino Nano 33 BLE (BLE & sensor onboard) | $26.00 |
 | Actuators | MG90S Metal-Gear Micro Servos, **positional** (2-pack; the v3 mechanism drives the carousel with one and keeps the other as a spare) | $12.00 |
 | Camera | Built-in laptop camera (preferred) **or** 1080p USB Webcam / ESP32-CAM | $0.00 – $20.00 |
-| Power Supply | 3.7V 500mAh LiPo Battery + USB-C TP4056 Charger Board | $10.00 |
+| Power Supply | 3.7V 500mAh LiPo Battery + USB-C TP4056 Charger Board. Run the servo off 5 V (USB, or a 5 V bank) with a bulk capacitor across it: an MG90S is rated 4.8–6 V, and the bare cell sits under that — it still has ~3x the torque the carousel needs, but it is out of spec and the Nano's VIN wants 5 V anyway | $10.00 |
 | Enclosure & Frame | 3D Printable Filament (PLA/PETG) / Hardware fasteners | $15.00 |
 | Prototyping Essentials | Breadboard, jumper wires, resistors, calibration pills/candies | $10.00 |
 | **Subtotal Hardware** | | **$73.00 – $93.00** |

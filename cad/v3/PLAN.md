@@ -136,7 +136,7 @@ Carousel:
 | Carousel OD | 112.6 mm, i.e. 0.7 mm sweep gap per side |
 | Divider thickness / height | 2.4 / 26 mm |
 | Running gap to deck | 0.35 mm |
-| Hub | 28 mm OD, 7 mm A/F hex socket +0.4 mm slip |
+| Hub | 28 mm OD, 12 mm A/F hex socket +0.3 mm slip (6.9 mm of hub wall left) |
 | Capacity | ~4.6 cm3 per bin, roughly 10-14 standard tablets |
 
 Discharge and chute:
@@ -162,7 +162,8 @@ Drive train:
 | Wall screws | 2x M3 from outside into the pad at z 90 and 101 — clear of the sweep, still inside the wall |
 | Servo plate | 4.5 mm thick — thinner than the servo's 6 mm nose, or the shaft head fouls it |
 | Flange plane | z = 112 mm |
-| Shaft | 30.15 mm overall: 26 mm head, 10 mm column, 7 mm hex foot |
+| Shaft | 30.15 mm overall: 26 mm head, 10 mm column, 12 mm A/F hex foot with a 45 deg ramp up to the column |
+| Coupling play | +/- 2.58 deg, derived and asserted against the park margin (section 13) |
 | Step per dose | 45 deg |
 
 ---
@@ -217,7 +218,10 @@ header of each file.
    `car_od` changes. Nothing else does.
 2. **C2 drive train** (`coupon_2_drive_train.scad`) — the MG90S must drop into the
    bracket pocket without forcing, the horn must seat flush in the shaft head, and
-   the hex must engage the hub with a little slop but no wobble. Stacking all
+   the hex must drop into the hub under its own weight and then rock less than a
+   couple of degrees — that rotational play lands straight on the park angle, so
+   this is the coupon that protects the +/- 6.2 deg margin (section 13). If it
+   needs forcing, `hex_slip` goes up; if it rattles, it goes down. Stacking all
    three also measures the shaft head's 1.5 mm clearance under the servo plate,
    which is the one clearance a render can flatter.
 3. **C3 chute dock** (`coupon_3_chute_dock.scad`) — the lip must overhang into the
@@ -333,7 +337,52 @@ Re-run it after moving the bracket, the rim, the wall or the divider height.
 
 ---
 
-## 13. Risks
+## 13. Will the MG90S actually turn it?
+
+Torque first, worst case, every bin full:
+
+| Term | How it arises | Torque |
+| :--- | :--- | ---: |
+| Thrust friction | the carousel hangs on the pilot post's 10 mm top face, `(2/3)·mu·W·R` | 0.5 mN·m |
+| Tablet friction | 40 g of tablets sliding on the deck at a 35 mm mean radius, tripled for ploughing and pinching against the bore | 16.5 mN·m |
+| Inertia | 8.7e-5 kg·m2 taken through 45 deg in 150 ms with a 50 ms ramp | 13.7 mN·m |
+| **Demand** | | **31 mN·m = 0.31 kg·cm** |
+
+Assumptions, all deliberately pessimistic: carousel 45 g (its 36.45 cm3 taken as
+solid PLA, though it prints lighter), 40 g of tablets (8 bins x 12 x 0.4 g),
+mu 0.35 PLA on PLA and 0.40 tablet on PLA, and an acceleration the servo will not
+actually manage.
+
+An MG90S is 1.8 kg·cm at 4.8 V and 2.2 kg·cm at 6 V, so **5.8x** margin at 4.8 V.
+Derate a cheap clone 30 % and run it off the bare 3.7 V cell, which is below its
+rated range, and there is still 3x. Torque is not what limits this mechanism.
+
+Nor is strength: at stall the 12 mm hex sees 0.16 MPa on its flats and the 10 mm
+PLA column under 1 MPa in torsion. The servo's nylon horn spline is the weak
+point, which is the right place for one.
+
+What *does* limit it is the park angle, and the coupling is most of the error
+budget. The hex is loose on purpose, and a forward step ends with the driving
+flats in contact, so the carousel parks behind its stop by the full play. At the
+original 7 mm A/F and 0.4 mm slip that was +/- 6.28 deg — the entire +/- 6.2 deg
+park margin, spent before the servo has contributed anything. Play goes as slip
+over size, so widening the hex to 12 mm and easing the slip to 0.3 mm brings it to
++/- 2.58 deg while keeping a fit you can still drop together by hand.
+`parameters_v3.scad` derives that figure and asserts it stays 2 deg inside the
+margin, which leaves the servo's own ~1 deg and the print's tolerance somewhere to
+live. `REZERO` reverses, so after one the carousel rests on the other flank — same
+magnitude, other sign, still inside.
+
+Speed and supply are comfortable. An MG90S slews 60 deg in about 0.1 s at 4.8 V,
+so a 45 deg step takes roughly 75 ms unloaded and 110-150 ms under this load,
+against the firmware's 400 ms allowance and a 600 ms fall window after it. Feed
+the servo 5 V — USB, or a 5 V bank — with a bulk capacitor across it rather than
+the 3.7 V cell, and let the firmware detach it after every cycle so the idle draw
+is nothing.
+
+---
+
+## 14. Risks
 
 | Risk | Mitigation |
 | :--- | :--- |
@@ -343,11 +392,12 @@ Re-run it after moving the bracket, the rim, the wall or the divider height.
 | Tablets wedge at the wedge edge | 1.2 mm lead-in relief on the opening's top face |
 | Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore and a hoop strip under the notch |
 | A tablet drops through a gap in the ramp | The notch cannot breach the floor by construction, and `check_drop_path.scad` proves it — section 11 |
+| Carousel parks outside the window because of coupling play | 12 mm hex at 0.3 mm slip holds the play to +/- 2.58 deg, asserted against the derived park margin — section 13 |
 | Something fixed ends up in the carousel's path | Pad and gusset are derived off `car_top`, `parameters_v3.scad` asserts it, and `check_carousel_clearance.scad` proves it on the geometry — section 12 |
 
 ---
 
-## 14. Not in v3
+## 15. Not in v3
 
 - No gate or shutter. The park convention makes one unnecessary.
 - No homing sensor. Only needed if you insist on a continuous-rotation servo.

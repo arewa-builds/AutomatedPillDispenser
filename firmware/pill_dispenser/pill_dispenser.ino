@@ -17,6 +17,11 @@
  *      continuous-rotation servo stepped on timing drifts past 6 deg within a
  *      few doses, so it is not supported here.
  *
+ *      The printed hex coupling spends another +/- 2.6 deg of that margin: a step
+ *      ends with its driving flats in contact, so the carousel sits that much
+ *      behind the commanded stop. It is consistent, because every DISPENSE steps
+ *      forward. REZERO reverses and therefore parks on the other flank.
+ *
  *   2. Four doses per fill. A 180 deg servo geared 1:1 to the carousel reaches
  *      five stops — 0, 45, 90, 135, 180 — which is four 45 deg steps. After the
  *      fourth dose the magazine is spent and DISPENSE is refused rather than

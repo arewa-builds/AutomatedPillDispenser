@@ -85,9 +85,18 @@ park_margin    = (car_pitch - 2 * asin(div_t / (2 * open_r_in)) - open_deg) / 2;
 // ---------------------------------------------------------------- drive train
 // Hex socket, deliberately loose: it passes torque but cannot side-load the
 // carousel, so the pilot post alone defines the axis.
-hex_af         = 7.0;
-hex_slip       = 0.40;
+//
+// The looseness costs rotational play, though, and that play lands directly on
+// the park angle: a forward step ends with the driving flats in contact, so the
+// carousel parks that much behind its stop. A 7 mm hex at 0.4 mm slip gives
+// +/- 6.28 deg, which is the whole park margin on its own. Widening the hex buys
+// the accuracy back without tightening the fit, since the play goes as slip over
+// size: 12 mm at 0.3 mm slip is +/- 2.58 deg and still a fit you can drop in.
+hex_af         = 12.0;
+hex_slip       = 0.30;
 hex_depth      = 8.0;
+hex_corner_d   = hex_af / cos(30);
+hex_backlash   = 30 - acos(((hex_af + hex_slip) / 2) / (hex_corner_d / 2));
 
 shaft_body_d   = 10.0;
 shaft_head_d   = 26.0;
@@ -186,5 +195,9 @@ assert(brk_pad_z0 >= car_top, "E3 pad dips into the carousel sweep");
 assert(brk_arm_z0 - brk_web_h > car_top, "E3 gusset dips into the carousel sweep");
 assert(brk_arm_z0 - brk_rib_h > car_top, "E3 ribs dip into the carousel sweep");
 assert(brk_screw_z[0] > brk_pad_z0, "E3 lower screw misses the pad");
+// The coupling's play parks the carousel behind its stop, so it has to leave room
+// for the servo's own positioning error inside the park margin.
+assert(hex_backlash <= park_margin - 2.0,
+       "hex play eats the park margin: widen hex_af or cut hex_slip");
 assert(brk_screw_z[len(brk_screw_z) - 1] < rim_z - 2,
        "E3 upper screw misses the wall: raise rim_z");
