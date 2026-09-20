@@ -155,11 +155,7 @@ chute_win_z1   = deck_z;
 // underlaps the opening: every pill through the wedge lands on ramp, never on
 // the ramp's leading edge.
 chute_stations = [
-<<<<<<< HEAD
-    [17.0, 52.0, 18.0, 51.9, 2.4],
-=======
-    [14.0, 52.0, 14.0, 51.9, 2.4],
->>>>>>> 6ca0aad45d2403a2d5ead9f5ddec68124fe5ad04
+    [17.0, 52.0, 14.0, 51.9, 2.4],
     [45.0, 30.0, 32.0, 51.8, 6.0],
     [57.0, 19.0, 32.0, 36.0, 6.0],
     [70.0,  8.0, 32.0, 24.0, 6.5],
