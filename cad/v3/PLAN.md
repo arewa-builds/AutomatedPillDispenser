@@ -12,7 +12,7 @@ section 9 for the remaining gates.
 
 | Feature in the drawing | How it is built |
 | :--- | :--- |
-| Grey cylindrical container housing | 120 mm OD drum, 3 mm wall, 94 mm tall |
+| Grey cylindrical container housing | 120 mm OD drum, 3 mm wall, 106 mm tall |
 | Open carousel, **no outer wall** | Compartments are closed on the outside by the drum bore; the carousel is a hub + 8 radial dividers, nothing else |
 | Dividers flush with the housing | 0.35 mm running gap to the deck below, 0.7 mm sweep gap to the bore |
 | 8 compartments | 45 deg pitch, ~4.6 cm3 each |
@@ -108,7 +108,8 @@ each file's top-level call applies that part's print orientation, which is what
 them — while the preview still shows the parts where they actually sit.
 
 Shared: `parameters_v3.scad`, `lib_v3.scad`, `assembly_preview_v3.scad`,
-`check_drop_path.scad` (section 11), `render_all_v3.sh` (previews by default,
+`check_drop_path.scad` (section 11), `check_carousel_clearance.scad` (section 12),
+`render_all_v3.sh` (previews by default,
 `--stl` to export).
 
 ---
@@ -120,7 +121,7 @@ Drum and deck:
 | Parameter | Value | Why |
 | :--- | :--- | :--- |
 | Drum OD / wall / bore | 120 / 3.0 / 114 mm | fits any 180 mm bed; 3 mm is 7 perimeters at 0.4 mm |
-| Rim height | 94 mm | 10.6 mm of wall above the filled carousel |
+| Rim height | 106 mm | set by the bracket screws, not by looks: both have to land in wall that is above the carousel sweep (section 12) |
 | Deck thickness | 5 mm | it is structural now, not a drop-in plate |
 | Deck top | z = 57 mm | leaves a 52 mm bay for the chute and electronics |
 | Wall/deck fillet | 1.2 mm | dividers are chamfered 1.6 mm to clear it |
@@ -156,8 +157,9 @@ Drive train:
 
 | Parameter | Value |
 | :--- | :--- |
-| Bracket reach | 57 mm; arm 22 x 8 mm plus 12 mm ribs; 26 mm gusset web |
-| Wall screws | 2x M3 driven from outside into the bracket pad |
+| Bracket reach | 57 mm; arm 22 x 8 mm plus 12 mm ribs; 18 mm gusset web |
+| Bracket pad | z 85 to 112, 26 x 6 mm. Starts 1.65 mm above the divider tops; anything reaching below z 83.35 jams the carousel solid |
+| Wall screws | 2x M3 from outside into the pad at z 90 and 101 — clear of the sweep, still inside the wall |
 | Servo plate | 4.5 mm thick — thinner than the servo's 6 mm nose, or the shaft head fouls it |
 | Flange plane | z = 112 mm |
 | Shaft | 30.15 mm overall: 26 mm head, 10 mm column, 7 mm hex foot |
@@ -170,13 +172,13 @@ Drive train:
 | Part | Est. filament | Est. time |
 | :--- | ---: | ---: |
 | C1-C3 coupons | ~30 g | ~1.5 h |
-| A3 deck body | ~88 g | ~7 h |
+| A3 deck body | ~98 g | ~8 h |
 | B3 base body | ~85 g | ~7 h |
 | C3 carousel | ~35 g | ~3 h |
 | F3 tray | ~25 g | ~2.5 h |
 | G3 base cover | ~25 g | ~1.5 h |
 | E3 bracket + D3 shaft | ~23 g | ~2 h |
-| **Total** | **~310 g** | **~24.5 h** |
+| **Total** | **~320 g** | **~25.5 h** |
 
 PLA, 0.4 mm nozzle, 0.2 mm layers, 3 perimeters, 20-25 % infill, no supports on
 any part. Iron the deck body's top face if your slicer can — that is the running
@@ -292,20 +294,60 @@ ramp, and any daylight is a hole. Re-run it after touching the chute.
 
 ---
 
-## 12. Risks
+## 12. Checking the carousel can turn
+
+The dividers are radial, so as the carousel turns it does not sweep a thin shell —
+it sweeps one solid ring: everything from z 57.35 to 83.35, from the hub out to
+r 56.3. Any fixed material inside that ring is not a tight fit, it is a dead stop
+on the first step, and a render hides it well: the bracket reads as *behind* the
+carousel when it is really *in* its path.
+
+That is exactly what the first cut of E3 did. Its pad stood 6 mm off the bore from
+z 72 up, putting a 26 x 10.6 x 11.35 mm block of bracket inside the ring, 26 mm of
+arc wide — over half a compartment pitch. All eight dividers would have hit it.
+
+Three things now keep it out, and the geometry drives all of them:
+
+- `brk_pad_z0 = car_top + brk_clear` — the pad cannot start below the divider tops
+  because it is *derived* from them, not typed in.
+- `brk_web_h` is whatever fits between the arm and the pad's foot, less 1 mm, so
+  the gusset's lower tip stays out too.
+- `rim_z = 106` exists to give both wall screws somewhere to land above the sweep.
+  Lower the rim and the upper screw runs out of wall; `parameters_v3.scad` asserts
+  that and says so.
+
+`check_carousel_clearance.scad` proves it on the real geometry rather than on the
+parameters. It intersects each fixed assembly with the swept ring, which it builds
+by revolving the divider's own profile — chamfer included, so the wall/deck fillet
+does not read as a clash when the 1.6 mm chamfer already clears it:
+
+| MODE | What | Must show |
+| ---: | :--- | :--- |
+| 0 | bracket in the ring | nothing at all |
+| 1 | deck body in the ring | the pilot post only — that one is the bearing |
+| 2 | base body in the ring | nothing at all |
+| 3 | drive shaft in the ring | the hex foot only — it turns with the carousel |
+| 4 | the swept ring alone | for orientation |
+
+Re-run it after moving the bracket, the rim, the wall or the divider height.
+
+---
+
+## 13. Risks
 
 | Risk | Mitigation |
 | :--- | :--- |
-| Bracket twists under servo reaction torque | 26 mm gusset web, 12 mm ribs, two screws into the pad; if it still flexes, add a second arm to the opposite wall |
+| Bracket twists under servo reaction torque | 18 mm gusset web, 12 mm ribs, two screws 11 mm apart in the pad; if it still flexes, move the leg outside the drum where it can be as deep as you like |
 | Deck warps and the carousel binds | Deck prints as the first layer; the 0.35 mm gap absorbs the rest; coupon C1 proves it before the 7 h print |
 | Servo parks outside +/- 6.2 deg | Use a positional servo; verify each stop by eye on the first fill |
 | Tablets wedge at the wedge edge | 1.2 mm lead-in relief on the opening's top face |
 | Chute cantilevers out of the notch | Notch is only as wide as the pill passage so the chute's own walls fuse into the wall, plus two shoulder fins back to the bore and a hoop strip under the notch |
 | A tablet drops through a gap in the ramp | The notch cannot breach the floor by construction, and `check_drop_path.scad` proves it — section 11 |
+| Something fixed ends up in the carousel's path | Pad and gusset are derived off `car_top`, `parameters_v3.scad` asserts it, and `check_carousel_clearance.scad` proves it on the geometry — section 12 |
 
 ---
 
-## 13. Not in v3
+## 14. Not in v3
 
 - No gate or shutter. The park convention makes one unnecessary.
 - No homing sensor. Only needed if you insist on a continuous-rotation servo.

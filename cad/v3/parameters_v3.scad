@@ -35,7 +35,9 @@ m2_free_d      = 2.30;
 h_od           = 120.0;
 h_id           = h_od - 2 * wall;          // 114
 h_ri           = h_id / 2;                 // 57
-rim_z          = 94.0;                     // top of the deck body wall
+// Top of the deck body wall. Both bracket screws have to land in wall that sits
+// above the carousel's sweep, so this is set by brk_screw_z, not by looks.
+rim_z          = 106.0;
 
 // ---------------------------------------------------------------- deck (A3)
 deck_z         = 52.0;                     // deck underside / body split plane
@@ -110,18 +112,26 @@ horn_boss_d    = 8.5;
 // ---------------------------------------------------------------- bracket (E3)
 brk_ctr        = 270.0;                    // rear wall, opposite the chute
 brk_pad_w      = 26.0;
-brk_pad_h      = 40.0;
 brk_pad_t      = 6.0;
-brk_pad_z0     = 72.0;
-brk_screw_z    = [78.0, 90.0];             // through the wall, from outside
 brk_arm_w      = 22.0;
 brk_arm_t      = 8.0;
 brk_arm_top    = 112.0;                    // = the servo flange plane
+brk_arm_z0     = brk_arm_top - brk_arm_t;  // 104, the arm's underside
+// The pad stands 6 mm off the bore, so below car_top it would sit squarely in the
+// ring the dividers sweep and the carousel could not turn at all. Everything the
+// bracket puts inside the bore is therefore derived off car_top, and the wall is
+// tall enough (rim_z) to take both screws above that line.
+brk_clear      = 1.65;                     // pad underside to divider top
+brk_pad_z0     = car_top + brk_clear;      // 85
+brk_pad_h      = brk_arm_top - brk_pad_z0; // 27, pad runs up to the flange plane
+brk_screw_z    = [brk_pad_z0 + 5, rim_z - 5];   // [90, 101], through the wall
 // The servo plate has to be thinner than the servo's nose (6 mm from flange to
 // case top) or the drive shaft's head fouls it. The beam keeps its full depth.
 brk_head_t     = 4.5;
 brk_rib_h      = 12.0;
-brk_web_h      = 26.0;                     // gusset depth at the wall
+// Gusset depth is whatever fits between the arm and the pad's foot, less 1 mm so
+// its lower tip never reaches the sweep either.
+brk_web_h      = brk_arm_z0 - brk_pad_z0 - 1.0;   // 18
 
 // ---------------------------------------------------------------- chute (B3)
 chute_wall     = 2.4;
@@ -167,3 +177,14 @@ post_r         = h_ri - post_d / 2 + 0.8;
 post_angles    = [70, 190, 310];
 cable_w        = 12.0;
 cable_h        = 6.0;
+
+// ---------------------------------------------------------------- sanity guards
+// The carousel sweeps the entire solid ring between car_z and car_top, so nothing
+// bolted down may sit inside it. check_carousel_clearance.scad proves that on the
+// real geometry; these catch the usual edits before anything is even rendered.
+assert(brk_pad_z0 >= car_top, "E3 pad dips into the carousel sweep");
+assert(brk_arm_z0 - brk_web_h > car_top, "E3 gusset dips into the carousel sweep");
+assert(brk_arm_z0 - brk_rib_h > car_top, "E3 ribs dip into the carousel sweep");
+assert(brk_screw_z[0] > brk_pad_z0, "E3 lower screw misses the pad");
+assert(brk_screw_z[len(brk_screw_z) - 1] < rim_z - 2,
+       "E3 upper screw misses the wall: raise rim_z");

@@ -35,6 +35,15 @@ means retuning the chute can only ever remove housing wall, never floor. Open
 must be filled edge to edge, because everything else under the wedge is cut away,
 so anything visible there is ramp and any daylight is a hole.
 
+The other thing that has to hold is that the carousel can actually turn. Radial
+dividers sweep a whole solid ring — z 57.35 to 83.35, hub out to r 56.3 — so
+anything bolted down that reaches into it is a dead stop, not a tight fit. The
+bracket's pad and gusset are therefore derived off the divider tops rather than
+typed in, and the wall runs up to z 106 so both bracket screws land in wall that is
+above the sweep. `check_carousel_clearance.scad` proves it on the geometry: modes 0
+and 2 must render nothing, mode 1 only the pilot post, mode 3 only the shaft's hex
+foot.
+
 ## Files
 
 | File | What |
@@ -50,6 +59,7 @@ so anything visible there is ramp and any daylight is a hole.
 | `part_g3_base_cover.scad` | electronics floor |
 | `assembly_preview_v3.scad` | preview only — flags at the top of the file |
 | `check_drop_path.scad` | proves the ramp is continuous under the wedge |
+| `check_carousel_clearance.scad` | proves nothing fixed sits in the carousel's path |
 | `coupon_1_sector.scad` | deck + carousel sectors: running gap, sweep gap |
 | `coupon_2_drive_train.scad` | servo plate, shaft, hub socket: the three fits |
 | `coupon_3_chute_dock.scad` | chute lip + tray mouth: the dock |

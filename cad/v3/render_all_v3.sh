@@ -21,11 +21,11 @@ run() { if command -v xvfb-run >/dev/null 2>&1; then xvfb-run -a openscad "$@"; 
 # view gets an explicit look-at point and distance rather than using --viewall.
 #   name | camera (transx,transy,transz,rotx,roty,rotz,dist)
 PART_VIEWS=(
-    "part_a3_deck_body|0,-3,21,58,0,25,300"
+    "part_a3_deck_body|0,-3,27,58,0,25,330"
     "part_b3_base_body|0,10,26,62,0,200,320"
     "part_c3_carousel|0,0,13,58,0,205,250"
     "part_d3_drive_shaft|0,0,15,62,0,205,90"
-    "part_e3_servo_bracket|39,0,20,62,0,325,210"
+    "part_e3_servo_bracket|39,0,13,62,0,325,185"
     "part_f3_catch_tray|0,99,7,60,0,205,200"
     "part_g3_base_cover|0,0,1.5,55,0,205,260"
 )
@@ -84,14 +84,14 @@ view() {              # view <name> <sed-expr> <camera> [imgsize]
     rm -f ".view_$name.scad"
 }
 
-view cutaway   's/^SHOW_BRACKET = .*/SHOW_BRACKET = true;/'                      0,14,44,60,0,205,440
-view assembled 's/^CUTAWAY    = .*/CUTAWAY    = false;/'                         0,10,46,62,0,205,460
-view section   's/^CUTAWAY    = true;/CUTAWAY = false;/; s/^SECTION    = .*/SECTION = true;/'  0,20,45,78,0,88,400
+view cutaway   's/^SHOW_BRACKET = .*/SHOW_BRACKET = true;/'                      0,14,50,60,0,205,565
+view assembled 's/^CUTAWAY    = .*/CUTAWAY    = false;/'                         0,10,52,62,0,205,500
+view section   's/^CUTAWAY    = true;/CUTAWAY = false;/; s/^SECTION    = .*/SECTION = true;/'  0,20,51,78,0,88,440
 # Same section, closed in on the chute: the one view that shows the ramp running
 # unbroken from under the deck's wedge to the lip over the tray.
 view chute     's/^CUTAWAY    = true;/CUTAWAY = false;/; s/^SECTION    = .*/SECTION = true;/'  0,36,33,82,0,88,280  1300,900
 view top       's/^CUTAWAY    = .*/CUTAWAY    = false;/; s/^SHOW_BRACKET = .*/SHOW_BRACKET = false;/'  0,0,60,0,0,0,330  1150,1150
-view exploded  's/^CUTAWAY    = .*/CUTAWAY    = false;/; s/^EXPLODED   = .*/EXPLODED   = true;/'       0,10,90,64,0,205,620
+view exploded  's/^CUTAWAY    = .*/CUTAWAY    = false;/; s/^EXPLODED   = .*/EXPLODED   = true;/'       0,10,96,64,0,205,660
 
 # Annotated hero, built from the cutaway. Skipped if Pillow is unavailable.
 if python3 -c "import PIL" 2>/dev/null; then

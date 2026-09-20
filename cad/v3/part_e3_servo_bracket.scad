@@ -5,6 +5,11 @@
 // ribbed because it has to hold the MG90S steady against its own reaction
 // torque while the carousel turns.
 //
+// Nothing here may dip below car_top: the dividers sweep that whole ring, and a
+// pad crossing it locks the carousel solid. Pad, gusset and ribs all start above
+// it, which is why the wall runs up to rim_z — both screws need wall above the
+// sweep. check_carousel_clearance.scad is the proof.
+//
 // Screws come from OUTSIDE the drum into this pad, so the wall itself carries no
 // internal boss. That matters: nothing permanently intrudes into the bore, and
 // removing the bracket (which you must do to get at the carousel anyway) leaves
@@ -19,7 +24,7 @@ include <lib_v3.scad>;
 $fn = 64;
 
 pad_x0     = h_ri - brk_pad_t;             // 51
-arm_z0     = brk_arm_top - brk_arm_t;      // 104
+arm_z0     = brk_arm_z0;                   // 104
 head_x0    = -11.0;
 head_x1    = 21.0;
 head_w     = 26.0;

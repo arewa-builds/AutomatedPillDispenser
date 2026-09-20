@@ -28,15 +28,15 @@ def O(p):
 
 # side, anchor in render coords, label, sub-lines, label y, accent
 LABELS = [
-    ('R', (770, 70), 'MG90S servo', ['Body sits above the plate,', 'output shaft points down'], 120, ACC),
-    ('R', (975, 145), 'Support bracket', ['Screws in from OUTSIDE the wall,', 'so nothing intrudes into the bore'], 300, ACC),
-    ('R', (795, 305), 'Printed drive shaft', ['Loose hex into the hub: passes', 'torque, never side-loads it'], 470, INK),
-    ('R', (862, 505), 'Pills rest on the deck', ['Bins have no floor and no', 'outer wall, exactly as drawn'], 640, INK),
-    ('R', (1032, 612), 'Two printed bodies,', ['three screwed ears. Split here so', 'both halves print support-free'], 810, INK),
-    ('L', (565, 455), '8 open compartments', ['Dividers sweep 0.35 mm', 'above the deck'], 160, INK),
-    ('L', (706, 600), '24\u00b0 discharge wedge', ['This bin has just dumped. At rest it', 'covers the wedge: \u00b16\u00b0 of park margin'], 380, RED),
-    ('L', (612, 795), '45\u00b0 chute, integral', ['One unbroken ramp from the', 'wedge to the tray lip'], 620, INK),
-    ('L', (300, 1045), 'Catch tray', ['Mouth wall cut down; the chute', 'lip overhangs into the well'], 860, INK),
+    ('R', (755, 180), 'MG90S servo', ['Body sits above the plate,', 'output shaft points down'], 120, ACC),
+    ('R', (890, 240), 'Support bracket', ['Screws in from OUTSIDE the wall, and', 'starts above the divider tops'], 300, ACC),
+    ('R', (752, 335), 'Printed drive shaft', ['Loose hex into the hub: passes', 'torque, never side-loads it'], 470, INK),
+    ('R', (815, 570), 'Pills rest on the deck', ['Bins have no floor and no', 'outer wall, exactly as drawn'], 640, INK),
+    ('R', (975, 660), 'Two printed bodies,', ['three screwed ears. Split here so', 'both halves print support-free'], 810, INK),
+    ('L', (545, 460), '8 open compartments', ['Dividers sweep 0.35 mm', 'above the deck'], 160, INK),
+    ('L', (725, 610), '24\u00b0 discharge wedge', ['This bin has just dumped. At rest it', 'covers the wedge: \u00b16\u00b0 of park margin'], 380, RED),
+    ('L', (667, 798), '45\u00b0 chute, integral', ['One unbroken ramp from the', 'wedge to the tray lip'], 620, INK),
+    ('L', (440, 1011), 'Catch tray', ['Mouth wall cut down; the chute', 'lip overhangs into the well'], 860, INK),
 ]
 
 d.text((PAD_L + 10, 24), 'v3 concept \u2014 integral deck, 8 open compartments, single servo',
