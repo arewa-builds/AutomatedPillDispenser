@@ -64,8 +64,14 @@
  *   Host -> "SETSTOP n\n"   Device -> "ACK_SETSTOP" | "ERR_ARG" | "ERR_BUSY"
  *   Host -> "TRIM d\n"      Device -> "ACK_TRIM <deg>" | "ERR_ARG" | "ERR_BUSY"
  *   Host -> "JOG d\n"       Device -> "ACK_TRIM <deg>" | "ERR_ARG" | "ERR_BUSY"
+ *   Host -> "PULSE us\n"    Device -> "ACK_PULSE <us>" | "ERR_ARG" | "ERR_BUSY"
  *   Host -> "STATUS\n"      Device -> "STATE=s STOP=i/n ANGLE=d US=u TRIM=t DOSES=n"
  *   Host -> "PING\n"        Device -> "PONG"
+ *
+ * PULSE is for commissioning: it ramps to a raw pulse anywhere in 500-2500 us so
+ * the servo's own ends and travel can be measured with nothing but this sketch, and
+ * it then marks the magazine spent so a stray DISPENSE cannot follow a hand-jogged
+ * position. REZERO or SETSTOP re-establishes where the carousel is.
  *
  * TRIM sets the offset and JOG nudges it. Both re-seat the carousel on the stop it
  * is already on, so you can watch the wedge while you calibrate, and both answer
@@ -133,6 +139,13 @@ static_assert(2.0f * HEADROOM_DEG + DOSES_PER_FILL * STEP_DEG <= TRAVEL_DEG,
               "stop table plus headroom runs past the calibrated travel");
 static_assert(US_MIN_SAFE < US_MAX_SAFE, "servo pulse limits are inverted");
 
+// PULSE is allowed outside the calibrated ends, because finding them is the whole
+// point of it. This is the envelope no hobby servo should be driven past.
+constexpr int US_HARD_MIN = 500;
+constexpr int US_HARD_MAX = 2500;
+static_assert(US_HARD_MIN <= US_MIN_SAFE && US_MAX_SAFE <= US_HARD_MAX,
+              "calibrated ends must sit inside the commissioning envelope");
+
 // ----- Motion profile -----
 /*
  * 45 deg in 250 ms, which is well inside an MG90S's own 0.1 s / 60 deg and gentle
@@ -160,7 +173,8 @@ enum class Request : uint8_t {
   NONE,
   DISPENSE,
   REZERO,
-  RESEAT      // TRIM / JOG: same stop, new offset
+  RESEAT,     // TRIM / JOG: same stop, new offset
+  PULSE       // commissioning: a raw pulse, no stop involved
 };
 
 Servo servoCarousel;
@@ -173,14 +187,16 @@ uint8_t stopIndex = 0;          // 0 .. DOSES_PER_FILL
 float parkTrimDeg = 0.0f;       // set by TRIM / JOG, RAM only
 int8_t lastDir = 1;             // +1 after a forward move, -1 after a reverse one
 
-// What the shaft was last told, in degrees above US_MIN_SAFE. Seeded to match the
-// boot belief (stop 0, approached forwards) so the first ramp starts somewhere
-// sensible without commanding anything.
-float commandedDeg = 0.0f;
+// What the shaft was last told, as a pulse. Seeded to match the boot belief
+// (stop 0, approached forwards) so the first ramp starts somewhere sensible
+// without commanding anything. Microseconds rather than degrees because PULSE has
+// to be able to ramp outside the calibrated ends.
+int commandedUs = 0;
 int lastUs = -1;
+int pulseTargetUs = 0;
 
-float moveFromDeg = 0.0f;
-float moveToDeg = 0.0f;
+int moveFromUs = 0;
+int moveToUs = 0;
 unsigned long moveMs = 0;
 
 String serialBuffer;
@@ -198,6 +214,8 @@ float commandDeg(uint8_t index, int8_t dir) {
   return stopDeg(index) + parkTrimDeg + static_cast<float>(dir) * COUPLING_PLAY_DEG;
 }
 
+// Stop targets are clamped to the calibrated ends: a stop that needs more travel
+// than the servo has is a calibration error, not something to drive into.
 int usForDeg(float deg) {
   const float us = US_MIN_SAFE + deg * US_PER_DEG;
   if (us <= US_MIN_SAFE) return US_MIN_SAFE;
@@ -205,11 +223,18 @@ int usForDeg(float deg) {
   return static_cast<int>(us + 0.5f);
 }
 
-// Only writes when the rounded pulse actually changes, so ramping every loop
-// costs nothing and the log of what was commanded stays readable.
-void writeDeg(float deg) {
-  commandedDeg = deg;
-  const int us = usForDeg(deg);
+float degForUs(int us) {
+  return (us - US_MIN_SAFE) / US_PER_DEG;
+}
+
+int stopUs(uint8_t index, int8_t dir) {
+  return usForDeg(commandDeg(index, dir));
+}
+
+// Only writes when the pulse actually changes, so ramping every loop costs
+// nothing and the record of what was commanded stays readable.
+void writeUs(int us) {
+  commandedUs = us;
   if (us != lastUs) {
     lastUs = us;
     servoCarousel.writeMicroseconds(us);
@@ -232,21 +257,33 @@ bool stateElapsed(unsigned long durationMs) {
   return (millis() - stateStartedMs) >= durationMs;
 }
 
+void startRamp(int targetUs) {
+  moveFromUs = commandedUs;
+  moveToUs = targetUs;
+
+  const int deltaUs = (moveToUs > moveFromUs) ? moveToUs - moveFromUs
+                                              : moveFromUs - moveToUs;
+  // The rate sets the duration, so a multi-step rezero takes that many steps'
+  // worth without anyone multiplying anything.
+  moveMs = static_cast<unsigned long>(deltaUs / US_PER_DEG / SLEW_DEG_PER_S * 1000.0f) + 20;
+
+  servoCarousel.attach(PIN_CAROUSEL);
+  writeUs(moveFromUs);
+  enterState(State::MOVE);
+}
+
 void startMoveTo(uint8_t index, int8_t dir) {
   stopIndex = index;
   lastDir = dir;
-  moveFromDeg = commandedDeg;
-  moveToDeg = commandDeg(index, dir);
+  startRamp(stopUs(index, dir));
+}
 
-  const float delta = (moveToDeg > moveFromDeg) ? moveToDeg - moveFromDeg
-                                                : moveFromDeg - moveToDeg;
-  // The rate sets the duration, so a four-step rezero takes four steps' worth
-  // without anyone multiplying anything.
-  moveMs = static_cast<unsigned long>(delta / SLEW_DEG_PER_S * 1000.0f) + 20;
-
-  servoCarousel.attach(PIN_CAROUSEL);
-  writeDeg(moveFromDeg);
-  enterState(State::MOVE);
+// Commissioning only: drive a pulse directly, then treat the magazine as spent so
+// a stray DISPENSE cannot follow a hand-jogged position. REZERO or SETSTOP first.
+void startPulse(int targetUs) {
+  lastDir = (targetUs >= commandedUs) ? +1 : -1;
+  stopIndex = DOSES_PER_FILL;
+  startRamp(targetUs);
 }
 
 void finishCycle(const __FlashStringHelper *reply) {
@@ -263,9 +300,9 @@ void reportStatus() {
   Serial.print('/');
   Serial.print(static_cast<int>(DOSES_PER_FILL));
   Serial.print(F(" ANGLE="));
-  Serial.print(commandedDeg, 2);
+  Serial.print(degForUs(commandedUs), 2);
   Serial.print(F(" US="));
-  Serial.print(usForDeg(commandedDeg));
+  Serial.print(commandedUs);
   Serial.print(F(" TRIM="));
   Serial.print(parkTrimDeg, 2);
   Serial.print(F(" DOSES="));
@@ -359,7 +396,7 @@ void handleCommand(const String &line) {
       // Belief only: the carousel does not move, which is the whole point. The
       // commanded angle moves with it so the next ramp starts from the new belief.
       stopIndex = static_cast<uint8_t>(requested);
-      commandedDeg = commandDeg(stopIndex, lastDir);
+      commandedUs = stopUs(stopIndex, lastDir);
       Serial.println(F("ACK_SETSTOP"));
     }
     return;
@@ -389,6 +426,22 @@ void handleCommand(const String &line) {
       Serial.println(F("ERR_ARG"));
     } else {
       applyTrim(parkTrimDeg + delta);
+    }
+    return;
+  }
+
+  if (verb.startsWith("PULSE")) {
+    if (state != State::IDLE) {
+      Serial.println(F("ERR_BUSY"));
+      return;
+    }
+    float requested = 0.0f;
+    if (!parseNumber(argumentOf(verb), requested) || requested < US_HARD_MIN ||
+        requested > US_HARD_MAX) {
+      Serial.println(F("ERR_ARG"));
+    } else {
+      pulseTargetUs = static_cast<int>(requested + 0.5f);
+      request = Request::PULSE;
     }
     return;
   }
@@ -442,6 +495,9 @@ void serviceStateMachine() {
         case Request::RESEAT:
           startMoveTo(stopIndex, lastDir);
           break;
+        case Request::PULSE:
+          startPulse(pulseTargetUs);
+          break;
         default:
           break;
       }
@@ -450,11 +506,12 @@ void serviceStateMachine() {
     case State::MOVE: {
       const unsigned long elapsed = millis() - stateStartedMs;
       if (elapsed >= moveMs) {
-        writeDeg(moveToDeg);
+        writeUs(moveToUs);
         enterState(State::SETTLE);
       } else {
         const float f = static_cast<float>(elapsed) / static_cast<float>(moveMs);
-        writeDeg(moveFromDeg + (moveToDeg - moveFromDeg) * f);
+        const float us = moveFromUs + (moveToUs - moveFromUs) * f;
+        writeUs(static_cast<int>(us + 0.5f));
       }
       break;
     }
@@ -487,6 +544,12 @@ void serviceStateMachine() {
           enterState(State::IDLE);
           ackTrim();
           break;
+        case Request::PULSE:
+          detachServo();
+          enterState(State::IDLE);
+          Serial.print(F("ACK_PULSE "));
+          Serial.println(commandedUs);
+          break;
         default:
           finishCycle(F("ACK_DISPENSE"));
           break;
@@ -507,7 +570,7 @@ void setup() {
   // Deliberately no move here: the servo already holds the carousel wherever it
   // was left, and writing an angle now could sweep full compartments across the
   // opening and dump them.
-  commandedDeg = commandDeg(0, lastDir);
+  commandedUs = stopUs(0, lastDir);
   detachServo();
   enterState(State::IDLE);
   Serial.println(F("READY_PILL_DISPENSER"));

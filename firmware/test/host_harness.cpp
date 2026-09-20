@@ -199,7 +199,7 @@ int main() {
 
   send("STATUS");
   run(2);
-  check(lastLine() == "STATE=0 STOP=0/3 ANGLE=14.17 US=742 TRIM=0.00 DOSES=3",
+  check(lastLine() == "STATE=0 STOP=0/3 ANGLE=14.20 US=742 TRIM=0.00 DOSES=3",
         "status reports the stop, the pulse and the trim");
 
   for (int d = 0; d < 3; ++d) {
@@ -324,7 +324,7 @@ int main() {
   run(2);
   check(lastLine() == "ERR_UNKNOWN_CMD", "an unknown command is reported");
 
-  // Nothing in the whole run may command the servo outside its measured ends —
+  // Nothing in normal operation may command the servo outside its measured ends —
   // that is where it buzzes against its own stops and draws current for nothing.
   int lo = 100000, hi = 0;
   for (size_t i = 0; i < servoLog.all.size(); ++i) {
@@ -335,6 +335,60 @@ int main() {
         "every pulse of the run stayed inside " + std::to_string(US_MIN_SAFE) +
             ".." + std::to_string(US_MAX_SAFE) + " us (saw " +
             std::to_string(lo) + ".." + std::to_string(hi) + ")");
+
+  // PULSE is the commissioning escape hatch: the one command allowed past the
+  // calibrated ends, because measuring where they are is what it is for.
+  const size_t beforeCommissioning = servoLog.all.size();
+  const int pulseFrom = commandedUs;
+  servoLog.writes.clear();
+  send("PULSE 2450");
+  run(1);
+  check(!servoLog.writes.empty(), "pulse starts moving immediately");
+  run(1200);
+  check(lastLine() == "ACK_PULSE 2450", "pulse acknowledges the pulse it reached");
+  check(servoLog.us == 2450,
+        "pulse drove past the calibrated end, which is what commissioning needs");
+  check(ramped(pulseFrom, 2450), "pulse ramps there rather than slamming");
+  check(!servoLog.attached, "pulse releases the servo when done");
+
+  // A hand-jogged shaft has no known stop, so dispensing waits for the host to
+  // say where the carousel actually is.
+  send("DISPENSE");
+  run(2);
+  check(lastLine() == "ERR_MAGAZINE_EMPTY",
+        "dispense is refused after a raw pulse until the stop is re-established");
+  send("STATUS");
+  run(2);
+  check(lastLine().find("STOP=3/3") != std::string::npos,
+        "status shows the magazine spent after a raw pulse");
+  send("SETSTOP 1");
+  run(2);
+  check(lastLine() == "ACK_SETSTOP", "setstop re-establishes the stop after a pulse");
+
+  send("PULSE 2600");
+  run(2);
+  check(lastLine() == "ERR_ARG", "a pulse above the commissioning envelope is refused");
+  send("PULSE 400");
+  run(2);
+  check(lastLine() == "ERR_ARG", "a pulse below the commissioning envelope is refused");
+  send("PULSE");
+  run(2);
+  check(lastLine() == "ERR_ARG", "a pulse with no argument is refused");
+  send("PULSE 1500");
+  run(1);
+  send("PULSE 1600");
+  run(2);
+  check(lastLine() == "ERR_BUSY", "a pulse mid-move reports busy");
+  run(400);
+
+  int clo = 100000, chi = 0;
+  for (size_t i = beforeCommissioning; i < servoLog.all.size(); ++i) {
+    if (servoLog.all[i] < clo) clo = servoLog.all[i];
+    if (servoLog.all[i] > chi) chi = servoLog.all[i];
+  }
+  check(clo >= US_HARD_MIN && chi <= US_HARD_MAX,
+        "commissioning pulses stayed inside the 500..2500 us envelope (saw " +
+            std::to_string(clo) + ".." + std::to_string(chi) + ")");
 
   printf("\n%s\n", failures ? "FAILED" : "all checks passed");
   return failures ? 1 : 0;
