@@ -5,12 +5,17 @@
 // ribbed because it has to hold the MG90S steady against its own reaction
 // torque while the carousel turns.
 //
+// Nothing here may dip below car_top: the dividers sweep that whole ring, and a
+// pad crossing it locks the carousel solid. Pad, gusset and ribs all start above
+// it, which is why the wall runs up to rim_z — both screws need wall above the
+// sweep. check_carousel_clearance.scad is the proof.
+//
 // Screws come from OUTSIDE the drum into this pad, so the wall itself carries no
 // internal boss. That matters: nothing permanently intrudes into the bore, and
 // removing the bracket (which you must do to get at the carousel anyway) leaves
 // a clear 114 mm opening to lift the carousel straight out.
 //
-// Print on its side — lay the arm's 22 mm face on the bed.
+// Prints flipped, flange plane down — see the note above the top-level call.
 // ============================================================================
 
 include <parameters_v3.scad>;
@@ -19,19 +24,22 @@ include <lib_v3.scad>;
 $fn = 64;
 
 pad_x0     = h_ri - brk_pad_t;             // 51
-arm_z0     = brk_arm_top - brk_arm_t;      // 104
+arm_z0     = brk_arm_z0;                   // 104
 head_x0    = -11.0;
 head_x1    = 21.0;
 head_w     = 26.0;
 body_cx    = servo_l / 2 - servo_shaft_in; // 5.5
 tab_dx     = servo_tab_span / 2 - 2.5;     // 13.6
 
+// A 3 mm rib tucked just inside each edge of the arm, deepest at the wall where
+// the bending moment is. Kept inside the arm's width so neither rib hangs off an
+// edge: that would be an unsupported flange, and it would make the arm stiffer on
+// one side than the other.
 module e3_rib(side) {
+    y0 = side > 0 ? brk_arm_w / 2 - 3 : -brk_arm_w / 2;
     hull() {
-        translate([pad_x0 - 3, side * (brk_arm_w / 2 - 1.5) - 1.5, arm_z0 - brk_rib_h])
-            cube([3, 3, brk_rib_h]);
-        translate([head_x1 + 0.5, side * (brk_arm_w / 2 - 1.5) - 1.5, arm_z0 - 2.5])
-            cube([3, 3, 2.5]);
+        translate([pad_x0 - 3, y0, arm_z0 - brk_rib_h]) cube([3, 3, brk_rib_h]);
+        translate([head_x1 + 0.5, y0, arm_z0 - 2.5]) cube([3, 3, 2.5]);
     }
 }
 
@@ -77,7 +85,13 @@ module servo_bracket_v3() {
     }
 }
 
-servo_bracket_v3();
+// The module works in assembly coordinates so the preview can use it as-is; the
+// top-level call is the print orientation. The pad's top, the arm's top and the
+// servo plate's top all sit in the flange plane, so flipping about that plane
+// lands the part on one large flat footprint. Everything else — pad, gusset,
+// ribs — then grows upward from it, so nothing needs support.
+translate([0, 0, brk_arm_top]) rotate([180, 0, 0])
+    rotate([0, 0, -brk_ctr]) servo_bracket_v3();
 
 echo(str("E3 bracket: reach ", h_ri, " mm, arm ", brk_arm_w, " x ", brk_arm_t,
          " + ", brk_rib_h, " mm ribs, flange plane z ", brk_arm_top));

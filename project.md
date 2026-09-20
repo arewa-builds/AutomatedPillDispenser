@@ -14,7 +14,7 @@ Computer Vision (Python Edge):
 
 Uses MediaPipe Face Mesh / facial detection to verify the correct patient is at the dispenser.
 
-Employs an OpenCV contour and color classification pipeline to visually confirm that the correct pill size, color, and count were dropped onto the tray before opening the latch.
+Employs an OpenCV contour and color classification pipeline to visually confirm that the correct pill size, color, and count reached the tray. The v3 mechanism has no latch to gate — the carousel's park position holds the remaining doses back — so this check confirms the dose that just fell and flags a miss rather than authorising the drop.
 
 Databricks Integration:
 
