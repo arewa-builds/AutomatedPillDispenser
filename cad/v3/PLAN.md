@@ -259,15 +259,29 @@ Only then print A3 and B3.
 - 600 ms dwell after each step for the dose to reach the tray, before the vision
   check reads it
 - the v1 latch servo is gone; D10 is free
-- `PARK_TRIM_DEG` trims all five stops together for the horn's mounting offset,
-  and a `static_assert` fails the build if the trim pushes a stop past 180
+- `car_n`, `car_pitch`, `park_margin` and `hex_backlash` are **generated** out of
+  `parameters_v3.scad` into `pill_dispenser/v3_geometry.h` by
+  `firmware/tools/geometry_from_cad.sh`, so the two cannot drift
+- moves are ramped at 180 deg/s and commanded as pulse widths, because `write()`
+  quantises to 1 deg and this margin cannot afford it
+- the shaft is commanded past the stop by `hex_backlash` in the direction of
+  travel, so the *carousel* lands on the stop; a reverse sweep flips the sign
 
-The consequence worth planning around: a 180 deg servo geared 1:1 to the carousel
-reaches five stops, so a fill is **four doses**. The fifth `DISPENSE` is refused
-with `ERR_MAGAZINE_EMPTY` rather than pushed into the servo's end stop, and
-`REZERO` sweeps back to stop 0 — safe only because the compartments it crosses are
-the four just emptied. All 8 bins per fill needs a continuous-rotation servo plus a
-lever microswitch to re-zero, which is the upgrade named in section 2.
+The consequence worth planning around is the park error budget, not the torque
+(section 13). Assembly can only index the carousel in 17.1 deg horn teeth, 60 deg
+hex seatings and 90 deg horn screws, so up to 8.6 deg of park offset has to be
+trimmed in firmware. That authority plus the coupling's play must be reserved at
+both ends of the servo's travel, which is what sets the doses per fill:
+
+    DOSES_PER_FILL = (TRAVEL_DEG - 2 * (TRIM_RANGE_DEG + hex_backlash)) / 45
+
+A nominal 180 deg servo gives **three** doses; a measured 203 deg or more gives
+four. The sketch derives it, reports it in its boot banner, and refuses the dose
+after the last stop with `ERR_MAGAZINE_EMPTY` rather than pushing into the end of
+the travel. `REZERO` sweeps back to stop 0 — safe only because the compartments it
+crosses are the ones just emptied. All 8 bins per fill still needs a
+continuous-rotation servo plus a lever microswitch to re-zero, which is the upgrade
+named in section 2.
 
 `firmware/test/run.sh` proves all of that on the host, with no board.
 

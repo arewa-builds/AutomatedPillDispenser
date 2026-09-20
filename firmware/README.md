@@ -8,32 +8,82 @@ no latch servo; the v3 deck parks the just-emptied compartment over the discharg
 opening, so nothing sits above it between doses and there is nothing to hold shut.
 D10, the v1 latch channel, is free.
 
-Geometry constants come from `cad/v3/parameters_v3.scad`. Two of them decide how
-the sketch behaves:
+Geometry constants are **generated** from `cad/v3/parameters_v3.scad` into
+`pill_dispenser/v3_geometry.h` by `tools/geometry_from_cad.sh`, so the sketch and
+the CAD cannot drift apart. Re-run that script after changing the carousel pitch,
+the deck opening or the hex coupling; the generated header is committed, so
+building needs OpenSCAD only when the geometry changes.
 
-| Constant | Value | Why |
+| From the CAD | Value | Why the sketch cares |
 | :--- | :--- | :--- |
-| `STEP_DEG` | 45 | One of 8 compartments (`car_pitch`) |
-| `DOSES_PER_FILL` | 4 | A 180 deg servo geared 1:1 reaches 5 stops, so 4 steps |
+| `STEP_DEG` | 45° | One of 8 compartments (`car_pitch`) |
+| `PARK_MARGIN_DEG` | 6.2° | How far off centre park may be before the wedge drains the *next* bin |
+| `COUPLING_PLAY_DEG` | 2.58° | The loose hex's rotational play (`hex_backlash`) |
 
-**Four doses per fill.** The servo drives the carousel 1:1, so its 180 deg span is
-all the travel there is: stops at 0, 45, 90, 135, 180. After the fourth dose
-`DISPENSE` returns `ERR_MAGAZINE_EMPTY` rather than pushing into the servo's end
-stop and reporting a dose that never fell. `REZERO` then sweeps back to stop 0 —
-safe only because the compartments it crosses are the four it just emptied. Refill
-per `cad/v3/README.md` and the count starts again.
+**Everything follows from the park margin.** Three things spend it and the sketch
+manages all three.
 
-**Absolute angles, not timed steps.** Parking has only ±6.2 deg of margin before
-the opening's edge slips past a divider and starts draining the next compartment,
-which would be a silent double dose. A positional servo commanded to an absolute
-angle parks to about 1 deg; a continuous-rotation servo stepped on timing drifts
-past 6 deg within a few doses, so the sketch does not support one.
+*Where the horn landed.* The output spline indexes in 17.1° teeth (14.4° on a
+25-tooth servo), the hub's hex in 60° and the horn screws in 90°, so assembly alone
+can leave the carousel up to 8.6° off centre — more than the margin. Nothing
+mechanical adjusts finer, so `TRIM` and `JOG` shift the whole stop table at run
+time, with `TRIM_RANGE_DEG` (9°) of authority reserved for them.
 
-**Calibrate `PARK_TRIM_DEG` once.** The horn's spline is fine enough that stop 0
-lands wherever the horn was pressed on. Trim all five stops together until the
-emptied compartment is centred in the opening, by eye, on the first fill. The trim
-also eats range at the far end, so a `static_assert` fails the build if it pushes
-the last stop past 180.
+*The coupling's play.* The hex is loose so it cannot side-load the carousel, which
+costs ±2.58°. A move ends with the driving flats in contact, so the carousel trails
+the shaft by that much in whichever direction it last moved; the sketch commands
+the shaft that far *past* the stop so the carousel lands *on* it. Reverse a sweep
+and the take-up flips sign, which is why `REZERO` ends on a different pulse than a
+forward arrival at the same stop.
+
+*The servo's own error*, about a degree, which is what is left.
+
+**Doses per fill is derived, not assumed.** Trim and play have to be reserved at
+both ends of the travel, so:
+
+```
+DOSES_PER_FILL = (TRAVEL_DEG - 2 * (TRIM_RANGE_DEG + COUPLING_PLAY_DEG)) / STEP_DEG
+```
+
+A nominal 180° servo gives **three**. Measure 203° or more — many MG90S reach about
+200° between 500 and 2500 µs — and the fourth comes back on its own. After the last
+dose `DISPENSE` returns `ERR_MAGAZINE_EMPTY` rather than pushing into the end of the
+travel and reporting a dose that never fell. `REZERO` then sweeps back to stop 0,
+safe only because the compartments it crosses are the ones it just emptied. The
+sketch prints what it derived in its `CAL` banner, so a log always says which it
+was.
+
+**Pulse widths, not degrees.** `write()` quantises to 1° (about 10 µs) and pins the
+range to the core's 544–2400 µs mapping; this margin can afford neither, so the
+sketch commands `writeMicroseconds()` against measured endpoints.
+
+**Ramped, not stepped.** A bare `write()` makes the servo slam the full 45° at
+maximum speed: the peak-current case on a small cell, the peak-torque case on a
+printed PLA coupling, and the case most likely to overrun a stop on inertia.
+`SLEW_DEG_PER_S` (180°/s, so 45° in 250 ms) sets the rate and each move's duration
+follows from it, so the timing and the motion cannot disagree. `SETTLE_MS` then
+holds the target before the tablet is allowed to move.
+
+## Commissioning a servo
+
+Do this once per servo, with the carousel empty. It replaces four constants at the
+top of the sketch and one runtime trim.
+
+1. **Find the ends.** With the shaft out of the hub, `JOG` is not available yet, so
+   command pulses with any serial terminal sketch or start from the defaults
+   (600–2400 µs). Widen `US_MIN_SAFE` / `US_MAX_SAFE` in steps of 50 µs until the
+   output stops moving, then back off 50 µs from each end so it never buzzes
+   against its own stops.
+2. **Measure the travel.** Mark the horn, command each end, and measure the angle
+   swept. That is `TRAVEL_DEG`. Recompile: the sketch reports the doses per fill it
+   derives, and its `static_assert`s refuse a table that will not fit.
+3. **Align the park.** Assemble, fill one compartment, and `DISPENSE` once. With
+   the just-emptied compartment over the wedge, `JOG 2` / `JOG -2` until the
+   divider gap is centred in the opening by eye. `STATUS` shows the trim you
+   arrived at.
+4. **Record it.** The trim lives in RAM. Log the value and have the host send
+   `TRIM <deg>` on connect, or paste it into `PARK_TRIM_DEG`'s default and
+   recompile.
 
 ## Serial protocol @ 115200
 
@@ -42,13 +92,19 @@ A superset of the v1 protocol, so hosts that only speak `DISPENSE` /
 
 | Host sends | Device replies | Notes |
 | :--- | :--- | :--- |
-| `DISPENSE` | `ACK_DISPENSE` | About 1 s: 400 ms step, 600 ms for the dose to reach the tray |
+| `DISPENSE` | `ACK_DISPENSE` | About 1 s: 270 ms ramp, 120 ms settle, 600 ms for the dose to reach the tray |
 | | `ERR_BUSY` | Mid-cycle |
-| | `ERR_MAGAZINE_EMPTY` | Stop 4 reached; refill and `REZERO` |
-| `REZERO` | `ACK_REZERO` | Sweeps back to stop 0, up to 1.6 s |
+| | `ERR_MAGAZINE_EMPTY` | Last stop reached; refill and `REZERO` |
+| `REZERO` | `ACK_REZERO` | Ramps back to stop 0; duration follows the distance |
 | `SETSTOP n` | `ACK_SETSTOP` / `ERR_ARG` | Corrects the sketch's count **without moving** |
-| `STATUS` | `STATE=n STOP=i/4 ANGLE=d` | |
+| `TRIM d` | `ACK_TRIM <deg>` / `ERR_ARG` | Sets the park offset, ±9°, and re-seats the carousel on its stop |
+| `JOG d` | `ACK_TRIM <deg>` / `ERR_ARG` | Same, relative to the trim in force |
+| `STATUS` | `STATE=s STOP=i/n ANGLE=d US=u TRIM=t DOSES=n` | |
+| `CAL` | `CAL US=a..b TRAVEL=t PLAY=p TRIM=t DOSES=n` | Also printed at boot |
 | `PING` | `PONG` | |
+
+`TRIM` and `JOG` answer only once the carousel has settled on its stop, so the
+reply means the offset is in effect rather than merely accepted.
 
 The servo holds its angle mechanically when unpowered, so the carousel's position
 survives a power cycle but the sketch's idea of it does not. On boot it assumes
@@ -63,8 +119,11 @@ correct the count with `SETSTOP`.
 ```
 
 Compiles the sketch on the host against small stubs — fake clock, fake serial,
-recording servo — and drives it through four doses, the refusal after them, the
-rezero sweep, and the argument handling. Needs only `g++`. See
+recording servo — and drives it through every dose of a fill and the refusal after
+them, the ramp (monotonic, starting where it believed it was, ending on the pulse
+the park budget calls for), the play take-up flipping sign on a reverse sweep,
+`TRIM`/`JOG` authority and bounds, and a final sweep proving no pulse anywhere in
+the run left the servo's measured ends. 51 checks, needs only `g++`. See
 `firmware/test/host_harness.cpp`.
 
 This complements the toolchain check below rather than replacing it: one proves
