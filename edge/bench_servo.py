@@ -182,6 +182,18 @@ def greet(link: NanoLink) -> dict[str, str]:
     return fields
 
 
+def stop_of(status_line: str) -> tuple[int, int] | None:
+    """Parse STOP=i/n out of a STATUS reply. None if the line is not a status."""
+    for token in status_line.split():
+        if token.startswith("STOP=") and "/" in token:
+            left, right = token[5:].split("/", 1)
+            try:
+                return int(left), int(right)
+            except ValueError:
+                return None
+    return None
+
+
 def check_turns(link: NanoLink) -> int:
     """Step a whole fill, then rezero, reporting what each move actually took."""
     failures = 0
@@ -191,8 +203,23 @@ def check_turns(link: NanoLink) -> int:
         raise BenchError(f"firmware reports {doses} doses per fill; check CAL")
 
     status = link.ask("STATUS")
-    print(f"  status: {status.last}\n")
-    print(f"  Expect {doses} steps of {STEP_DEG:.0f} deg, then a rezero back to stop 0.")
+    print(f"  status: {status.last}")
+
+    # --wiggle / --ends / --sweep all use PULSE, which marks the magazine spent on
+    # purpose. Recover that here so the turn check can follow them without a
+    # separate REZERO, rather than failing on a refuse that is not a fault.
+    parsed = stop_of(status.last)
+    if parsed is not None and parsed[0] >= doses:
+        print("  magazine spent (usual after --wiggle); rezeroing before the fill\n")
+        recover = link.ask("REZERO", timeout_s=20.0)
+        if not recover.ok("ACK_REZERO"):
+            print(f"  rezero before fill failed: {recover.last!r}")
+            return 1
+        print(f"  rezero: ACK after {recover.elapsed_ms} ms — starting the fill from stop 0")
+        status = link.ask("STATUS")
+        print(f"  status: {status.last}")
+
+    print(f"\n  Expect {doses} steps of {STEP_DEG:.0f} deg, then a rezero back to stop 0.")
     print("  Watch the mark on the shaft: each ACK_DISPENSE is one bin.\n")
 
     served = 0
