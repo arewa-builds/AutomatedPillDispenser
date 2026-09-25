@@ -308,45 +308,118 @@ def wiggle(link: NanoLink, centre: int = 1500, amplitude: int = 150, cycles: int
     return failures
 
 
+# Commissioning envelope, matching US_HARD_MIN/MAX in the sketch. A hunt that is
+# still moving here has not found a mechanical stop.
+US_ENVELOPE_LO = 500
+US_ENVELOPE_HI = 2500
+END_BACKOFF_US = 50
+# (TRAVEL - 2 * (TRIM_RANGE 9 + PLAY 2.58)) / 45 crosses 4 at about 203 deg.
+FOUR_DOSES_AT_DEG = 203.0
+
+
+def ask_moved() -> str:
+    """'y' the horn moved, 'n' it did not, 'q' stop this direction.
+
+    A blank line is not taken as yes. The previous prompt said "Enter to continue",
+    and holding Enter then recorded the envelope limits as if they were the stops.
+    """
+    while True:
+        try:
+            answer = input("    did the horn move? [y/n/q]: ").strip().lower()
+        except EOFError:
+            return "q"
+        if answer.startswith(("y", "n", "q")):
+            return answer[0]
+        print("    answer y, n or q — Enter alone does not count")
+
+
+def read_dial(which: str) -> float | None:
+    try:
+        raw = input(f"    dial reading at the {which} end (blank to skip): ").strip()
+    except EOFError:
+        return None
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        print("    not a number; skipping the angle")
+        return None
+
+
 def find_ends(link: NanoLink) -> int:
     """Guided hunt for the ends: creep outward from centre until motion stops."""
     greet(link)
-    print("\n  Creeping out from 1500 us in 100 us steps, one key press at a time.")
-    print("  Press Enter to take the next step, or q when the horn stops moving.\n")
+    print("\n  Creeping out from 1500 us in 100 us steps.")
+    print("  After each step say whether the horn actually moved: y, n, or q.")
+    print("  Enter by itself does nothing, so holding it down cannot invent an end.\n")
 
     measured: dict[str, int] = {}
-    for label, direction in (("US_MAX_SAFE", +1), ("US_MIN_SAFE", -1)):
+    ran_out: dict[str, bool] = {}
+    dials: dict[str, float | None] = {}
+    for label, direction, which in (
+        ("US_MAX_SAFE", +1, "high"),
+        ("US_MIN_SAFE", -1, "low"),
+    ):
         us = 1500
-        link.ask(f"PULSE {us}", timeout_s=15.0)
+        reply = link.ask(f"PULSE {us}", timeout_s=15.0)
+        if not reply.ok("ACK_PULSE"):
+            raise BenchError(f"could not reach centre: {reply.last!r}")
         last_moving = us
-        print(f"  hunting {label}:")
-        while 500 <= us <= 2500:
-            try:
-                answer = input(f"    at {us} us — Enter to continue, q to stop: ")
-            except EOFError:
-                answer = "q"
-            if answer.strip().lower().startswith("q"):
+        hit_envelope = False
+        print(f"  hunting {label}, from {us} us:")
+        while True:
+            nxt = us + direction * 100
+            if not US_ENVELOPE_LO <= nxt <= US_ENVELOPE_HI:
+                print(
+                    f"    still moving at the {US_ENVELOPE_LO}..{US_ENVELOPE_HI} us "
+                    "envelope, so the mechanical stop is past what this sketch can command"
+                )
+                hit_envelope = True
                 break
-            us += direction * 100
-            if not 500 <= us <= 2500:
-                print("    hit the 500..2500 us envelope; stopping there")
-                us -= direction * 100
-                break
-            reply = link.ask(f"PULSE {us}", timeout_s=15.0)
+            reply = link.ask(f"PULSE {nxt}", timeout_s=15.0)
             if not reply.ok("ACK_PULSE"):
-                print(f"    refused at {us} us — {reply.last!r}")
+                print(f"    refused at {nxt} us — {reply.last!r}")
                 break
-            last_moving = us
+            print(f"    {nxt} us, reached after {reply.elapsed_ms} ms")
+            if ask_moved() != "y":
+                break
+            last_moving = nxt
+            us = nxt
         measured[label] = last_moving
-        print(f"    {label} = {last_moving} us\n")
+        ran_out[label] = hit_envelope
+        print(f"    last pulse that moved the horn: {last_moving} us")
+        dials[label] = read_dial(which)
         link.ask("PULSE 1500", timeout_s=15.0)
+        print()
 
-    span = measured["US_MAX_SAFE"] - measured["US_MIN_SAFE"]
-    print("  Back off each end by ~50 us so the servo never buzzes against it, then")
-    print("  measure the horn angle between the two and set TRAVEL_DEG to it:")
-    print(f"    US_MIN_SAFE = {measured['US_MIN_SAFE'] + 50}")
-    print(f"    US_MAX_SAFE = {measured['US_MAX_SAFE'] - 50}")
-    print(f"    (raw span {span} us; TRAVEL_DEG is the angle you measure, not a guess)")
+    safe_lo = measured["US_MIN_SAFE"] + END_BACKOFF_US
+    safe_hi = measured["US_MAX_SAFE"] - END_BACKOFF_US
+    if ran_out["US_MIN_SAFE"] or ran_out["US_MAX_SAFE"]:
+        print("  These are safe command limits, not measured stops: the horn was still")
+        print("  moving when the envelope ran out. The angle between them is the travel.")
+    else:
+        print("  Last pulses that still moved the horn, backed off 50 us so it never")
+        print("  buzzes against its own stop:")
+    print(f"    US_MIN_SAFE = {safe_lo}")
+    print(f"    US_MAX_SAFE = {safe_hi}")
+
+    lo, hi = dials["US_MIN_SAFE"], dials["US_MAX_SAFE"]
+    if lo is not None and hi is not None:
+        travel = abs(hi - lo)
+        if travel > 270:
+            print(
+                f"  {travel:.0f} deg means the pointer crossed 0 between the readings. "
+                "Re-read both ends from the same side of the dial."
+            )
+        else:
+            doses = "four" if travel >= FOUR_DOSES_AT_DEG else "three"
+            print(f"    TRAVEL_DEG = {travel:.0f}  ->  {doses} doses per fill")
+            print("  Four doses needs 203 deg, once trim and play are reserved at both ends.")
+    else:
+        print("  TRAVEL_DEG is the angle between those two ends. The dial in")
+        print("  docs/diagrams/servo_protractor.png marks the 203 deg line.")
+
     print("  PULSE left the stop unknown: send REZERO or SETSTOP before dispensing.")
     return 0
 

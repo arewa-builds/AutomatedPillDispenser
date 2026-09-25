@@ -170,9 +170,11 @@ top of the sketch and one runtime trim.
 1. **Find the ends.** `PULSE <us>` commands a raw pulse anywhere in 500–2500 µs, which
    is wider than the calibrated ends on purpose: finding them is the point.
    `python edge/bench_servo.py --ends` creeps outward from 1500 µs in 100 µs steps and
-   prints the last pulse that still moved the horn. Back off 50 µs from each end so the
-   servo never buzzes against its own stops, and put those in `US_MIN_SAFE` /
-   `US_MAX_SAFE`.
+   asks, after each one, whether the horn actually moved. Only a `y` counts; Enter by
+   itself is ignored, because holding it down used to run into the 500–2500 µs envelope
+   and print those limits as if they were the stops. It backs off 50 µs from the last
+   pulse that moved and, if you type both dial readings, prints `TRAVEL_DEG` and whether
+   that is three doses or four. Put the two pulses in `US_MIN_SAFE` / `US_MAX_SAFE`.
 2. **Measure the travel.** Print [`docs/diagrams/servo_protractor.png`](../docs/diagrams/servo_protractor.png)
    at 100%, cut its centre out, slip it over the horn screw and tape a toothpick along
    the horn. Read the pointer at each end; the difference is `TRAVEL_DEG`. The dial marks
