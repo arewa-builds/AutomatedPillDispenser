@@ -151,7 +151,7 @@ for i, text in enumerate((
         "GND takes three: TP4056 OUT−, servo brown, Nano GND.",
         "Solder one pigtail to GND and join the other two on a breadboard row.",
         "Cap goes across VO and GND at the servo end, striped leg to ground.",
-        "Check VO reads ~5.0 V unloaded before the servo is anywhere near it.")):
+        "No meter? Power up with the servo red unplugged — both boards stay cool.")):
     d.text((lx + 26, ly + 202 + i * 30), "•  " + text, font=f_note, fill=GREY)
 
 img.save(OUT)
