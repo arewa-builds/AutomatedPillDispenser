@@ -173,9 +173,17 @@ top of the sketch and one runtime trim.
    prints the last pulse that still moved the horn. Back off 50 µs from each end so the
    servo never buzzes against its own stops, and put those in `US_MIN_SAFE` /
    `US_MAX_SAFE`.
-2. **Measure the travel.** Mark the horn, `PULSE` each end, and measure the angle
-   swept with a protractor. That is `TRAVEL_DEG`. Recompile: the sketch reports the doses per fill it
-   derives, and its `static_assert`s refuse a table that will not fit.
+2. **Measure the travel.** Print [`docs/diagrams/servo_protractor.png`](../docs/diagrams/servo_protractor.png)
+   at 100%, cut its centre out, slip it over the horn screw and tape a toothpick along
+   the horn. Read the pointer at each end; the difference is `TRAVEL_DEG`. The dial marks
+   203° in blue because that is the threshold where a fill gives four doses instead of
+   three, and its red ticks are the carousel's 45° bin pitch, so one `DISPENSE` should
+   move the pointer exactly one tick. Recompile after setting it: the sketch reports the
+   doses per fill it derives, and its `static_assert`s refuse a table that will not fit.
+
+   No printer? The carousel is its own protractor — eight dividers at 45°. Sweep end to
+   end with it loosely on the shaft and count: more than four and a half bin pitches
+   means you have the 203°.
 3. **Align the park.** `REZERO` first — `PULSE` leaves the stop unknown by design.
    Then assemble, fill one compartment, and `DISPENSE` once. With
    the just-emptied compartment over the wedge, `JOG 2` / `JOG -2` until the
