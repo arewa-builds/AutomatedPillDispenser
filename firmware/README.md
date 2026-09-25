@@ -70,6 +70,10 @@ Nano, servo, one 5 V supply. No carousel yet: run this with the drive shaft **ou
 the hub**, or with every bin empty, because a step is a real 45° carousel move and it
 will drop whatever sits above the discharge opening.
 
+![v3 bench wiring: LiPo through TP4056 and a 3-pad boost module to the MG90S, with the module's single GND shared to the Nano and the signal on D9](../docs/diagrams/bench_wiring_3pad.png)
+
+Redraw it with `python docs/diagrams/bench_wiring.py` after changing any of this.
+
 | Servo lead | Goes to | Notes |
 | :--- | :--- | :--- |
 | Orange (signal) | Nano **D9** | 3.3 V logic drives an MG90S fine; if it twitches or ignores commands, put a level shifter on this line |
