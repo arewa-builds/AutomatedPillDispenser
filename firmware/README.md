@@ -118,8 +118,14 @@ servo end, absorbs what is left.
 
 ```bash
 arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:mbed_nano:nano33ble firmware/pill_dispenser
-python edge/bench_servo.py            # autodetects the port
+python edge/bench_servo.py --cmd PING     # link only, nothing moves
+python edge/bench_servo.py --wiggle       # a few degrees each way, first contact
+python edge/bench_servo.py                # the full fill, 45 deg at a time
 ```
+
+Work up in that order. `--cmd PING` proves the port and the sketch without commanding
+the servo at all, `--wiggle` proves the signal and the supply with moves too small to
+throw anything, and only then is a full 45° step worth trying.
 
 `edge/bench_servo.py` is the bench harness for exactly this moment. Its default run
 greets the board, prints the calibration it derived, then steps a whole fill and
@@ -137,8 +143,9 @@ rezeros, timing each move:
 Mark the horn before you start. Each `ACK_DISPENSE` is one bin, so three steps is 135°
 of carousel and `REZERO` should bring the mark back where it began. A mark that does
 not return means the coupling is slipping on the horn, not a firmware problem. Other
-modes: `--ends` for the guided endpoint hunt below, `--sweep 600 2400 --step 200` to
-walk raw pulses, `--cmd "TRIM 3"` to send anything by hand, `--list` for the ports.
+modes: `--wiggle` for first contact, `--ends` for the guided endpoint hunt below,
+`--sweep 600 2400 --step 200` to walk raw pulses, `--cmd "TRIM 3"` to send anything by
+hand, `--list` for the ports.
 
 ## Commissioning a servo
 

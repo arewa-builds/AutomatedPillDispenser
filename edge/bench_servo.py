@@ -5,6 +5,7 @@ drive train can be checked before the carousel is loaded or the vision stack is 
 the loop. Three things it does:
 
   turns    step a whole fill and rezero, timing each step   (default)
+  wiggle   small moves around centre, to prove it responds    --wiggle
   ends     guided hunt for the servo's own mechanical ends   --ends
   sweep    walk raw pulses across a range so travel can be measured with a protractor
 
@@ -13,6 +14,7 @@ real 45 deg carousel move and it will dump whatever is above the discharge openi
 
     python bench_servo.py --list
     python bench_servo.py                      # the turn check
+    python bench_servo.py --wiggle             # first contact, a few degrees each way
     python bench_servo.py --ends
     python bench_servo.py --sweep 600 2400 --step 200 --dwell 1.5
     python bench_servo.py --cmd "TRIM 3" --cmd STATUS
@@ -252,6 +254,33 @@ def sweep(link: NanoLink, lo: int, hi: int, step: int, dwell_s: float) -> int:
     return failures
 
 
+def wiggle(link: NanoLink, centre: int = 1500, amplitude: int = 150, cycles: int = 2) -> int:
+    """First contact: small moves either side of centre, just to prove it turns."""
+    greet(link)
+    print(f"\n  Wiggling {centre - amplitude} / {centre} / {centre + amplitude} us, "
+          f"{cycles} passes. Expect a few degrees of horn movement each way.\n")
+
+    failures = 0
+    targets: list[int] = []
+    for _ in range(cycles):
+        targets += [centre, centre - amplitude, centre + amplitude]
+    targets.append(centre)
+
+    for us in targets:
+        reply = link.ask(f"PULSE {us}", timeout_s=15.0)
+        if reply.ok("ACK_PULSE"):
+            print(f"  {us:>5} us: reached after {reply.elapsed_ms} ms")
+        else:
+            print(f"  {us:>5} us: refused — {reply.last!r}")
+            failures += 1
+        time.sleep(0.5)
+
+    print("\n  Nothing moved? Check D9, the shared ground, and 5 V at the servo's red lead.")
+    print("  Buzzing or stuttering? The supply is sagging under the move.")
+    print("  PULSE left the stop unknown: send REZERO before dispensing.")
+    return failures
+
+
 def find_ends(link: NanoLink) -> int:
     """Guided hunt for the ends: creep outward from centre until motion stops."""
     greet(link)
@@ -312,6 +341,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", help="serial port; autodetected when omitted")
     parser.add_argument("--baud", type=int, default=BAUD)
     parser.add_argument("--list", action="store_true", help="list serial ports and exit")
+    parser.add_argument("--wiggle", action="store_true",
+                        help="small moves around centre, to prove the servo responds")
     parser.add_argument("--ends", action="store_true", help="guided endpoint hunt")
     parser.add_argument(
         "--sweep", nargs=2, type=int, metavar=("LO", "HI"), help="walk raw pulses LO..HI"
@@ -340,6 +371,8 @@ def main(argv: list[str] | None = None) -> int:
         with NanoLink(resolve_port(args.port), args.baud) as link:
             if args.cmd:
                 failures = run_commands(link, args.cmd)
+            elif args.wiggle:
+                failures = wiggle(link)
             elif args.ends:
                 failures = find_ends(link)
             elif args.sweep:
