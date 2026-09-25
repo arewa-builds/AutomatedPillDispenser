@@ -59,6 +59,7 @@ expected output is in `firmware/README.md`.
 ```bash
 python bench_servo.py --cmd PING          # link only, nothing moves
 python bench_servo.py --wiggle            # a few degrees each way, first contact
+python bench_servo.py --dump              # one dose at a time: is it exactly one bin?
 python bench_servo.py                     # step a whole fill, then rezero
 python bench_servo.py --ends              # guided servo endpoint hunt
 python bench_servo.py --cmd STATUS        # send anything by hand

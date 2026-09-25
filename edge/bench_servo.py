@@ -5,6 +5,7 @@ drive train can be checked before the carousel is loaded or the vision stack is 
 the loop. Three things it does:
 
   turns    step a whole fill and rezero, timing each step   (default)
+  dump     one dose at a time, checking each is exactly one bin   --dump
   wiggle   small moves around centre, to prove it responds    --wiggle
   ends     guided hunt for the servo's own mechanical ends   --ends
   sweep    walk raw pulses across a range so travel can be measured with a protractor
@@ -14,6 +15,7 @@ real 45 deg carousel move and it will dump whatever is above the discharge openi
 
     python bench_servo.py --list
     python bench_servo.py                      # the turn check
+    python bench_servo.py --dump               # one dose at a time, is it exactly one bin?
     python bench_servo.py --wiggle             # first contact, a few degrees each way
     python bench_servo.py --ends
     python bench_servo.py --sweep 600 2400 --step 200 --dwell 1.5
@@ -435,6 +437,129 @@ def find_ends(link: NanoLink) -> int:
     return 0
 
 
+# Where a dose may land and still only empty the compartment over the opening.
+# Derived in parameters_v3.scad; wider than this and the next bin starts to drain.
+PARK_MARGIN_DEG = 6.2
+# A step-size error accumulates, one dose per bin, so the pass band is much
+# tighter than the park margin: 3 deg short three times over is a wrong bin.
+STEP_TOL_DEG = 2.0
+
+
+def signed_delta(previous: float, current: float) -> float:
+    """Degrees from previous to current, in (-180, 180]."""
+    return (current - previous + 540.0) % 360.0 - 180.0
+
+
+def ask_line(prompt: str) -> str:
+    try:
+        return input(prompt).strip()
+    except EOFError:
+        return "q"
+
+
+def ask_float(prompt: str) -> float | None:
+    raw = ask_line(prompt)
+    if not raw or raw.lower().startswith("q"):
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        print("    not a number, skipped")
+        return None
+
+
+def check_dump(link: NanoLink) -> int:
+    """One dose at a time: each must be one bin, and the park must be centred.
+
+    Step size and park offset are different faults. A step that is short every
+    time means the microseconds-per-degree is wrong, which only the endpoint
+    measurement can fix. JOG shifts the whole stop table and recentres the park
+    without changing how far apart the stops are.
+    """
+    cal = greet(link)
+    doses = int(float(cal.get("DOSES", "0")))
+    play = float(cal.get("PLAY", "0"))
+    if doses < 1:
+        raise BenchError(f"firmware reports {doses} doses per fill; check CAL")
+
+    print("\n  Rezeroing so the first step takes up the hex play from a known side.")
+    rezero = link.ask("REZERO", timeout_s=20.0)
+    if not rezero.ok("ACK_REZERO"):
+        raise BenchError(f"rezero failed: {rezero.last!r}")
+    print(f"  rezero: ACK after {rezero.elapsed_ms} ms\n")
+
+    first_horn = STEP_DEG + 2.0 * play
+    print("  Two different things can be wrong, and they have different fixes.")
+    print(f"  Step size. The carousel must advance {STEP_DEG:.0f} deg, one compartment.")
+    print(f"  The horn moves {first_horn:.1f} deg on the first dose — 45 plus {2 * play:.1f}")
+    print(f"  of play taken up both ways — and {STEP_DEG:.0f} deg on every dose after.")
+    print("  Short or long every time means the microseconds per degree are wrong:")
+    print("  that is the --ends measurement, and JOG cannot fix it.")
+    print(f"  Park. The emptied compartment must sit within ±{PARK_MARGIN_DEG} deg of")
+    print("  the opening centre. JOG shifts every stop equally, so it recentres the")
+    print("  park and leaves the step size alone.\n")
+
+    origin = ask_float("  dial reading before the first dose (blank to judge by eye): ")
+    previous = origin
+    failures = 0
+    told_scale = False
+
+    for dose in range(1, doses + 1):
+        expected = first_horn if dose == 1 else STEP_DEG
+        reply = link.ask("DISPENSE", timeout_s=15.0)
+        if not reply.ok("ACK_DISPENSE"):
+            print(f"  dose {dose}: {reply.last!r}")
+            failures += 1
+            break
+        print(
+            f"\n  dose {dose}: ACK after {reply.elapsed_ms} ms — "
+            f"horn should have moved {expected:.1f} deg, carousel {STEP_DEG:.0f}"
+        )
+
+        reading = ask_float("    dial reading now (blank to judge by eye): ") if previous is not None else None
+        off: float | None = None
+        if reading is not None and previous is not None:
+            moved = signed_delta(previous, reading)
+            off = moved - expected
+            verdict = "within the 2 deg band" if abs(off) <= STEP_TOL_DEG else "outside the 2 deg band"
+            print(f"    moved {moved:.1f} deg, {off:+.1f} from {expected:.1f} — {verdict}")
+            if abs(off) > STEP_TOL_DEG:
+                failures += 1
+            previous = reading
+        else:
+            previous = None
+            answer = ask_line("    ok, short, or long? [ok/short/long/q]: ").lower()
+            if answer.startswith("q"):
+                break
+            if answer.startswith("s"):
+                print("    short.")
+                failures += 1
+                off = -STEP_TOL_DEG - 1
+            elif answer.startswith("l"):
+                print("    long.")
+                failures += 1
+                off = STEP_TOL_DEG + 1
+            else:
+                print("    taken as one bin.")
+
+        if off is not None and abs(off) > STEP_TOL_DEG and not told_scale:
+            told_scale = True
+            print("    A step off by the same amount every dose is the pulse scale,")
+            print("    not the park. Finish --ends and set TRAVEL_DEG before trimming.")
+
+        nudge = ask_float("    JOG degrees to recentre the park (blank to leave it): ")
+        if nudge is not None and nudge != 0:
+            jog = link.ask(f"JOG {nudge}", timeout_s=15.0)
+            print(f"    {jog.last}")
+            if not jog.ok("ACK_TRIM"):
+                failures += 1
+
+    print("\n  Pass is every dose inside 2 deg, and the emptied compartment inside")
+    print(f"  ±{PARK_MARGIN_DEG} deg of the opening. Three short steps of 3 deg stack")
+    print("  into a dose from the next compartment.")
+    return failures
+
+
 def run_commands(link: NanoLink, commands: list[str]) -> int:
     greet(link)
     failures = 0
@@ -452,6 +577,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", help="serial port; autodetected when omitted")
     parser.add_argument("--baud", type=int, default=BAUD)
     parser.add_argument("--list", action="store_true", help="list serial ports and exit")
+    parser.add_argument("--dump", action="store_true",
+                        help="one dose at a time, checking each is exactly one bin")
     parser.add_argument("--wiggle", action="store_true",
                         help="small moves around centre, to prove the servo responds")
     parser.add_argument("--ends", action="store_true", help="guided endpoint hunt")
@@ -482,6 +609,8 @@ def main(argv: list[str] | None = None) -> int:
         with NanoLink(resolve_port(args.port), args.baud) as link:
             if args.cmd:
                 failures = run_commands(link, args.cmd)
+            elif args.dump:
+                failures = check_dump(link)
             elif args.wiggle:
                 failures = wiggle(link)
             elif args.ends:
