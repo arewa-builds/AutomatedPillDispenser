@@ -170,7 +170,10 @@ top of the sketch and one runtime trim.
 1. **Find the ends.** `PULSE <us>` commands a raw pulse anywhere in 500–2500 µs, which
    is wider than the calibrated ends on purpose: finding them is the point.
    `python edge/bench_servo.py --ends` creeps outward from 1500 µs in 100 µs steps and
-   asks, after each one, whether the horn actually moved. Only a `y` counts; Enter by
+   asks, after each one, whether the horn moved further the same way. `y` continues,
+   `n` means it only buzzed in place (that is the stop), and `q` means it jumped back
+   the other way, which is the pulse going past the feedback pot — the hunt stops
+   there rather than stripping the gears. Enter by
    itself is ignored, because holding it down used to run into the 500–2500 µs envelope
    and print those limits as if they were the stops. It backs off 50 µs from the last
    pulse that moved and, if you type both dial readings, prints `TRAVEL_DEG` and whether
@@ -186,11 +189,18 @@ top of the sketch and one runtime trim.
    No printer? The carousel is its own protractor — eight dividers at 45°. Sweep end to
    end with it loosely on the shaft and count: more than four and a half bin pitches
    means you have the 203°.
-3. **Align the park.** `REZERO` first — `PULSE` leaves the stop unknown by design.
-   Then assemble, fill one compartment, and `DISPENSE` once. With
-   the just-emptied compartment over the wedge, `JOG 2` / `JOG -2` until the
-   divider gap is centred in the opening by eye. `STATUS` shows the trim you
-   arrived at.
+3. **Check each dose is one bin.** `python edge/bench_servo.py --dump` rezeros,
+   then dispenses one dose at a time and waits. The carousel must advance 45° per
+   dose. The horn moves 45° plus twice the coupling play on the first dose — the
+   shaft takes the play up from the reverse side the rezero left it on — and 45°
+   after that. Type the dial reading after each dose and it reports the error
+   against a ±2° band. Three doses each 3° short land on the next compartment,
+   which is why the band is tighter than the ±6.2° park margin.
+
+   A step that is short or long by the same amount every time is the pulse scale,
+   not the park: finish step 2 and set `TRAVEL_DEG`. `JOG` only recentres the park.
+   With the carousel fitted and one compartment filled, `JOG 2` / `JOG -2` until
+   the just-emptied compartment sits over the opening. `STATUS` shows the trim.
 4. **Record it.** The trim lives in RAM. Log the value and have the host send
    `TRIM <deg>` on connect, or paste it into `PARK_TRIM_DEG`'s default and
    recompile.
