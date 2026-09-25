@@ -39,7 +39,7 @@ python pipeline.py --mode mock
 
 Flow: stable face (MediaPipe Tasks) → mock `DISPENSE` → OpenCV tray pill count → `logs/telemetry/*.jsonl`.
 
-Place candy in the lower-central tray ROI (drawn on screen). Press `q` to quit.
+Place candy in the lower-central tray ROI (drawn on screen). Press `q` to quit. A second dose counts when the tray goes from 1 pill to 2; the first pill stays where it landed. The preview spends its first frames on "Camera settling..." so exposure finishes before the face check starts.
 
 If the log shows `FaceGate backend: MediaPipe Tasks`, camera face detection is enabled.
 

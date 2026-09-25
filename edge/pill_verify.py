@@ -21,6 +21,34 @@ from config import (
 logger = logging.getLogger(__name__)
 
 
+def dose_landed(count: int, baseline: int, expected_new: int = 1) -> bool:
+    """True when at least expected_new pills have appeared since baseline.
+
+    Pills stay in the tray, so the second dose is a count of 2, not another 1.
+    """
+    return count >= baseline + expected_new
+
+
+def latest_frame(capture: cv2.VideoCapture, discard: int = 4):
+    """Read until the queued frames are gone and return the newest one.
+
+    A dispense blocks on serial for about a second. The camera keeps buffering
+    during that, and the next read is a frame from before the pill landed.
+    """
+    frame = None
+    ok = False
+    try:
+        for _ in range(max(1, discard)):
+            got, frame = capture.read()
+            ok = bool(got) and frame is not None
+            if not ok:
+                return False, frame
+    except Exception:
+        logger.exception("Camera read failed")
+        return False, None
+    return ok, frame
+
+
 @dataclass
 class PillVerifyResult:
     count: int
@@ -94,29 +122,38 @@ class PillVerifier:
     def wait_for_pill(
         self,
         capture: cv2.VideoCapture,
+        baseline: int = 0,
         expected_count: int | None = None,
+        on_frame=None,
     ) -> PillVerifyResult:
-        """Poll the camera until expected count matches or timeout."""
-        target = self.expected_count if expected_count is None else expected_count
+        """Poll until `expected_count` new pills have shown up past `baseline`."""
+        expected_new = self.expected_count if expected_count is None else expected_count
         deadline = time.perf_counter() + self.timeout_s
         last = PillVerifyResult(0, False, 0, [])
+        # Two reads drop the frame buffered during the serial dispense without
+        # spending the whole timeout on a slow camera.
+        discard = 2
 
         while time.perf_counter() < deadline:
-            try:
-                ok, frame = capture.read()
-            except Exception:
-                logger.exception("Camera read failed during pill verify")
-                break
+            ok, frame = latest_frame(capture, discard)
+            discard = 1
             if not ok or frame is None:
                 logger.error("Empty camera frame during pill verify")
                 break
 
             last = self.count_pills(frame)
-            last.matched = last.count == target
+            last.matched = dose_landed(last.count, baseline, expected_new)
+            if on_frame is not None:
+                on_frame(frame, last)
             if last.matched:
+                logger.info("New pill seen: tray %s, was %s", last.count, baseline)
                 return last
 
-            time.sleep(0.03)
-
-        last.matched = last.count == target
+        last.matched = dose_landed(last.count, baseline, expected_new)
+        logger.info(
+            "Pill verify ended: tray %s, was %s, matched %s",
+            last.count,
+            baseline,
+            last.matched,
+        )
         return last
