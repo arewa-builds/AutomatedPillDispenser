@@ -19,7 +19,10 @@ PILL_HSV_UPPER = (179, 255, 255)
 PILL_MIN_AREA = 80
 PILL_MAX_AREA = 8000
 PILL_EXPECTED_COUNT = 1
-PILL_VERIFY_TIMEOUT_S = 2.0
+PILL_VERIFY_TIMEOUT_S = 3.0
+# Tray ROI as fractions of the frame (x0, y0, x1, y1). Keep this on the catch
+# tray — a wide ROI that includes a white shirt will count body blobs as pills.
+PILL_ROI_FRAC = (0.02, 0.55, 0.48, 0.98)
 
 # Serial / mock hardware
 SERIAL_BAUD = 115200

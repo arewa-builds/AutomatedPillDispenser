@@ -39,7 +39,10 @@ python pipeline.py --mode mock
 
 Flow: stable face (MediaPipe Tasks) → mock `DISPENSE` → OpenCV tray pill count → `logs/telemetry/*.jsonl`.
 
-Place candy in the lower-central tray ROI (drawn on screen). Press `q` to quit.
+Place candy in the tray ROI drawn on screen (left-lower by default — keep your
+white shirt out of that box). Press `q` to quit. After each dose the pipeline waits
+for the face to leave before arming the next cycle, so a seated patient cannot empty
+the three-dose magazine in one sitting.
 
 If the log shows `FaceGate backend: MediaPipe Tasks`, camera face detection is enabled.
 
@@ -77,11 +80,15 @@ python pipeline.py --mode serial --port COM3           # Windows
 | File | Role |
 | :--- | :--- |
 | `face_gate.py` | MediaPipe face presence + stability streak |
-| `pill_verify.py` | HSV/contour pill count in tray ROI |
+| `pill_verify.py` | HSV/contour pill count in tray ROI (delta vs pre-dispense baseline) |
 | `hardware_bridge.py` | PySerial bridge with mock fallback |
 | `mock_arduino.py` | In-process Nano serial emulator |
 | `bench_servo.py` | Bench bring-up: turn check, endpoint hunt, raw commands |
 | `telemetry.py` | JSONL event writer |
 | `pipeline.py` | Orchestration |
 
-Tune HSV / area thresholds in `config.py` for your candy and lighting.
+Tune HSV / area thresholds and `PILL_ROI_FRAC` in `config.py` for your candy, lighting,
+and where the catch tray sits in the camera frame. Verification succeeds when the tray
+count rises by `PILL_EXPECTED_COUNT` above the pre-dispense baseline — clear leftover
+tablets if a previous dose is still sitting there and the new one cannot be seen as an
+increase.

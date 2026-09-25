@@ -78,8 +78,22 @@ class HardwareBridge:
         return False
 
     def dispense(self) -> DispenseCommandResult:
+        return self._command(DISPENSE_COMMAND, ACK_TOKEN)
+
+    def rezero(self) -> DispenseCommandResult:
+        """Sweep the carousel back to stop 0 after ERR_MAGAZINE_EMPTY."""
+        return self._command("REZERO\n", "ACK_REZERO", timeout_s=20.0)
+
+    def _command(
+        self,
+        command: str,
+        ack_token: str,
+        timeout_s: float | None = None,
+    ) -> DispenseCommandResult:
         if self.mode == "mock":
             assert self._mock is not None
+            if command.startswith("REZERO"):
+                return DispenseCommandResult(True, "ACK_REZERO", 50, "mock")
             response: MockSerialResponse = self._mock.send_dispense()
             return DispenseCommandResult(
                 ok=response.ok,
@@ -89,20 +103,31 @@ class HardwareBridge:
             )
 
         assert self._serial is not None
+        previous_timeout = self._serial.timeout
         started = time.perf_counter()
         try:
+            if timeout_s is not None:
+                self._serial.timeout = timeout_s
             self._serial.reset_input_buffer()
-            self._serial.write(DISPENSE_COMMAND.encode("utf-8"))
+            self._serial.write(command.encode("utf-8"))
             self._serial.flush()
             line = self._serial.readline().decode("utf-8", errors="replace").strip()
             latency_ms = int((time.perf_counter() - started) * 1000)
-            ok = ACK_TOKEN in line
-            return DispenseCommandResult(ok=ok, message=line or "NO_RESPONSE", latency_ms=latency_ms, mode="serial")
+            ok = ack_token in line
+            return DispenseCommandResult(
+                ok=ok, message=line or "NO_RESPONSE", latency_ms=latency_ms, mode="serial"
+            )
         except Exception as exc:
             latency_ms = int((time.perf_counter() - started) * 1000)
-            logger.exception("Serial dispense command failed")
-            return DispenseCommandResult(ok=False, message=str(exc), latency_ms=latency_ms, mode="serial")
-
+            logger.exception("Serial command failed: %s", command.strip())
+            return DispenseCommandResult(
+                ok=False, message=str(exc), latency_ms=latency_ms, mode="serial"
+            )
+        finally:
+            try:
+                self._serial.timeout = previous_timeout
+            except Exception:
+                logger.exception("Failed restoring serial timeout")
     def close(self) -> None:
         try:
             if self._serial is not None and self._serial.is_open:

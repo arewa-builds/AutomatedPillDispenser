@@ -17,7 +17,6 @@ import sys
 import time
 
 import cv2
-import numpy as np
 
 from config import CAMERA_INDEX, FRAME_HEIGHT, FRAME_WIDTH, RETRY_LIMIT
 from face_gate import FaceGate
@@ -67,7 +66,7 @@ def open_camera(index: int = CAMERA_INDEX) -> cv2.VideoCapture:
     return capture
 
 
-def annotate(frame, face_result, pill_result, status: str):
+def annotate(frame, face_result, pill_result, status: str, verifier: PillVerifier | None = None):
     if face_result.box is not None:
         x, y, w, h = face_result.box
         color = (40, 200, 40) if face_result.stable else (40, 180, 220)
@@ -82,72 +81,135 @@ def annotate(frame, face_result, pill_result, status: str):
             2,
         )
 
-    h, w = frame.shape[:2]
-    y0, y1 = int(h * 0.45), int(h * 0.95)
-    x0, x1 = int(w * 0.20), int(w * 0.80)
+    if verifier is not None:
+        x0, y0, x1, y1 = verifier.roi_rect(frame)
+    else:
+        h, w = frame.shape[:2]
+        y0, y1 = int(h * 0.55), int(h * 0.98)
+        x0, x1 = int(w * 0.02), int(w * 0.48)
     cv2.rectangle(frame, (x0, y0), (x1, y1), (220, 180, 40), 1)
     cv2.putText(frame, status, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
     if pill_result is not None:
         cv2.putText(
             frame,
-            f"pills={pill_result.count} match={pill_result.matched}",
+            f"pills={pill_result.count} base={pill_result.baseline} "
+            f"need>={pill_result.target} match={pill_result.matched}",
             (20, 60),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
+            0.55,
             (240, 240, 240),
             2,
         )
     return frame
 
 
-def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: PillVerifier, writer: TelemetryWriter):
-    status = "Looking for stable face..."
-    pill_result = None
-    face_result = face_gate.evaluate(np.zeros((480, 640, 3), dtype=np.uint8))
+def wait_for_face(
+    capture,
+    face_gate: FaceGate,
+    verifier: PillVerifier,
+    want_present: bool,
+    status_when_waiting: str,
+):
+    """Block until the face is stably present, or fully gone.
 
-    # Warm until face is stable
+    Between doses the patient has to leave the frame and come back — otherwise a
+    still-present face immediately burns the next slot of a three-dose magazine.
+    """
     while True:
         ok, frame = capture.read()
         if not ok or frame is None:
             raise RuntimeError("Camera frame grab failed")
         face_result = face_gate.evaluate(frame)
-        status = (
-            f"Face stable ({face_result.confidence:.2f}) — dispensing"
-            if face_result.stable
-            else f"Face present={face_result.present} conf={face_result.confidence:.2f}"
-        )
-        display = annotate(frame.copy(), face_result, pill_result, status)
+        if want_present:
+            ready = face_result.stable
+            status = (
+                f"Face stable ({face_result.confidence:.2f}) — dispensing"
+                if ready
+                else f"Waiting for face… present={face_result.present} "
+                f"conf={face_result.confidence:.2f}"
+            )
+        else:
+            ready = not face_result.present
+            status = status_when_waiting if not ready else "Clear — ready for next patient"
+        display = annotate(frame.copy(), face_result, None, status, verifier)
         cv2.imshow("Pill Dispenser Edge (q=quit)", display)
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
-            return False
-        if face_result.stable:
-            break
+            return None, False
+        if ready:
+            return face_result, True
+
+
+def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: PillVerifier, writer: TelemetryWriter):
+    face_result, cont = wait_for_face(
+        capture, face_gate, verifier, want_present=True, status_when_waiting=""
+    )
+    if not cont or face_result is None:
+        return False
 
     cycle_started = time.perf_counter()
-    retries = 0
     event_status = "failure"
     pills_detected = 0
     hw_latency = 0
+    pill_result = None
+    retries = 0
 
-    while retries <= RETRY_LIMIT:
-        dispense = bridge.dispense()
-        hw_latency = dispense.latency_ms
-        if not dispense.ok:
-            logger.error("Dispense failed: %s", dispense.message)
+    # Count what is already in the tray so a leftover tablet cannot pass for a
+    # new dose, and so two tablets do not fail a check that still expected "1".
+    baseline = verifier.baseline(capture)
+
+    dispense = bridge.dispense()
+    hw_latency = dispense.latency_ms
+    if not dispense.ok:
+        logger.error("Dispense failed: %s", dispense.message)
+        if "ERR_MAGAZINE_EMPTY" in dispense.message:
+            logger.warning("Magazine empty — sending REZERO; refill the carousel")
+            recover = bridge.rezero()
+            if recover.ok:
+                logger.info("REZERO acknowledged in %s ms", recover.latency_ms)
+            else:
+                logger.error("REZERO failed: %s", recover.message)
             event_status = "failure"
-            break
-
-        pill_result = verifier.wait_for_pill(capture)
-        pills_detected = pill_result.count
-        if pill_result.matched:
-            event_status = "success" if retries == 0 else "retry"
-            break
-
-        retries += 1
-        event_status = "retry"
-        logger.warning("Pill not verified; retry %s/%s", retries, RETRY_LIMIT)
-        face_gate.reset()
+            # Hold until the face leaves so we do not spam DISPENSE into an empty magazine.
+            _, cont = wait_for_face(
+                capture,
+                face_gate,
+                verifier,
+                want_present=False,
+                status_when_waiting="Magazine empty — refill, then step out of frame",
+            )
+            if not cont:
+                return False
+        else:
+            event_status = "failure"
+    else:
+        # One physical dispense per cycle. Retries only re-check the camera —
+        # re-sending DISPENSE was burning the three-dose magazine on CV noise.
+        while retries <= RETRY_LIMIT:
+            pill_result = verifier.wait_for_pill(capture, baseline=baseline)
+            pills_detected = pill_result.count
+            if pill_result.matched:
+                event_status = "success" if retries == 0 else "retry"
+                break
+            retries += 1
+            if retries <= RETRY_LIMIT:
+                logger.warning(
+                    "Pill not verified (count=%s baseline=%s need>=%s); "
+                    "re-checking camera %s/%s — clear the tray if a leftover is sitting there",
+                    pill_result.count,
+                    pill_result.baseline,
+                    pill_result.target,
+                    retries,
+                    RETRY_LIMIT,
+                )
+            else:
+                event_status = "failure"
+                logger.error(
+                    "Pill not verified after dispense (count=%s baseline=%s need>=%s)",
+                    pill_result.count,
+                    pill_result.baseline,
+                    pill_result.target,
+                )
 
     total_latency = int((time.perf_counter() - cycle_started) * 1000)
     source = "mock" if bridge.mode == "mock" else "serial"
@@ -168,9 +230,23 @@ def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: Pi
         ok, frame = capture.read()
         if not ok:
             break
-        display = annotate(frame, face_result, pill_result, f"Result: {event_status}")
+        display = annotate(frame, face_result, pill_result, f"Result: {event_status}", verifier)
         cv2.imshow("Pill Dispenser Edge (q=quit)", display)
         if cv2.waitKey(1) & 0xFF == ord("q"):
+            return False
+
+    # Require the face to leave before the next cycle can arm — this is what
+    # stops a seated patient from emptying the magazine in three seconds.
+    face_gate.reset()
+    if event_status != "failure" or "ERR_MAGAZINE_EMPTY" not in (dispense.message if not dispense.ok else ""):
+        _, cont = wait_for_face(
+            capture,
+            face_gate,
+            verifier,
+            want_present=False,
+            status_when_waiting="Dose done — step out of frame before the next one",
+        )
+        if not cont:
             return False
     face_gate.reset()
     return True
