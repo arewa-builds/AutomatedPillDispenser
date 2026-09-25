@@ -23,7 +23,12 @@ module drive_shaft_v3() {
     difference() {
         union() {
             translate([0, 0, shaft_z0])
-                cylinder(h = hex_depth, d = hex_af / cos(30), $fn = 6);
+                cylinder(h = hex_depth, d = hex_corner_d, $fn = 6);
+            // Printed head-down the hex is the last thing off the bed, so the
+            // step out to its corners would be an overhang. 45 deg ramp instead.
+            translate([0, 0, shaft_z0 + hex_depth - 0.01])
+                cylinder(h = (hex_corner_d - shaft_body_d) / 2 + 0.01,
+                         d1 = hex_corner_d, d2 = shaft_body_d, $fn = 6);
             translate([0, 0, shaft_z0 + hex_depth - 0.01])
                 cylinder(h = col_top - shaft_z0 - hex_depth + 0.01, d = shaft_body_d);
             translate([0, 0, col_top]) cylinder(h = shaft_head_t, d = shaft_head_d);

@@ -51,6 +51,19 @@ python pipeline.py --mode mock --headless
 
 ## Run with Arduino later
 
+Check the drive train on its own first — camera and telemetry out of the way, shaft
+out of the carousel hub. Wiring and expected output are in `firmware/README.md`.
+
+```bash
+python bench_servo.py --cmd PING          # link only, nothing moves
+python bench_servo.py --wiggle            # a few degrees each way, first contact
+python bench_servo.py                     # step a whole fill, then rezero
+python bench_servo.py --ends              # guided servo endpoint hunt
+python bench_servo.py --cmd STATUS        # send anything by hand
+```
+
+Then the full loop:
+
 ```bash
 python pipeline.py --mode serial --port /dev/ttyACM0   # Linux
 python pipeline.py --mode serial --port COM3           # Windows
@@ -64,6 +77,7 @@ python pipeline.py --mode serial --port COM3           # Windows
 | `pill_verify.py` | HSV/contour pill count in tray ROI |
 | `hardware_bridge.py` | PySerial bridge with mock fallback |
 | `mock_arduino.py` | In-process Nano serial emulator |
+| `bench_servo.py` | Bench bring-up: turn check, endpoint hunt, raw commands |
 | `telemetry.py` | JSONL event writer |
 | `pipeline.py` | Orchestration |
 

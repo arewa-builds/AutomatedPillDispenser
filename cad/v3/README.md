@@ -22,6 +22,13 @@ turns on: `parameters_v3.scad` derives it and every part echoes it. Park further
 off than that and the wedge starts draining the next compartment, which is why v3
 wants a positional servo rather than a continuous-rotation one.
 
+Turning it is easy — an MG90S has roughly 6x the torque this needs, so the error
+budget, not the muscle, is what the drive train is designed around. A step ends
+with the coupling's driving flats in contact, so the carousel parks behind its stop
+by the full hex play; that is why the hex is 12 mm across flats rather than 7 mm,
+which holds the play to ±2.58° instead of ±6.28° at the same easy fit. PLAN.md
+section 13 carries the torque and error budget in full.
+
 From the wedge on, the tablet is on its own until it reaches the tray, so the ramp
 has to be unbroken the whole way.
 
@@ -118,8 +125,10 @@ and `DOSE_ANGLE` (22.5 = at rest with the emptied bin over the wedge).
 
 1. Screw the round horn into the **drive shaft** head (4x M2).
 2. Drop the **carousel** into the **deck body**, hub onto the pilot post.
-3. Drop the shaft's hex foot into the hub socket. It should be a loose fit — that
-   is intentional, so the shaft passes torque without side-loading the carousel.
+3. Drop the shaft's hex foot into the hub socket. It should drop in under its own
+   weight — that looseness is intentional, so the shaft passes torque without
+   side-loading the carousel — but it should not rock more than about 2.5°, since
+   that play is what the park margin has to absorb.
 4. Bolt the **bracket** to the wall with 2x M3 driven in from *outside* the drum.
 5. Push the **MG90S** down through the bracket's plate onto the horn's spline,
    then 2x M2 through the flange.
