@@ -13,7 +13,7 @@
 | Microcontroller | Arduino Nano 33 BLE (BLE & sensor onboard) | $26.00 |
 | Actuators | MG90S Metal-Gear Micro Servos, **positional** (2-pack; the v3 mechanism drives the carousel with one and keeps the other as a spare) | $12.00 |
 | Camera | Built-in laptop camera (preferred) **or** 1080p USB Webcam / ESP32-CAM | $0.00 – $20.00 |
-| Power Supply | 3.7V 500mAh LiPo + USB-C TP4056 charger + 0.9–5V→5V boost module. The MG90S is rated 4.8–6 V and the bare cell sits under that, so the servo runs off the boost output (LiPo → TP4056 B+/B− for its protection circuit → OUT+ to boost VI → boost VO to servo red, boost GND shared with the Nano) with a 470–1000 µF bulk cap across it. The Nano keeps USB power; ground is the only shared node. Wiring in `firmware/README.md` | $10.00 |
+| Power Supply | 3.7V 500mAh LiPo + USB-C TP4056 charger + 0.9–5V→5V boost module. The MG90S is rated 4.8–6 V and the bare cell sits under that, so the servo runs off the boost output (LiPo → TP4056 B+/B− for its protection circuit → OUT+ to boost VI → boost VO to servo red, boost GND shared with the Nano) with a 470–1000 µF bulk cap across it. The Nano keeps USB power; ground is the only shared node. Wiring diagram: `docs/diagrams/bench_wiring_3pad.png` | $10.00 |
 | Enclosure & Frame | 3D Printable Filament (PLA/PETG) / Hardware fasteners | $15.00 |
 | Prototyping Essentials | Breadboard, jumper wires, resistors, calibration pills/candies | $10.00 |
 | **Subtotal Hardware** | | **$73.00 – $93.00** |

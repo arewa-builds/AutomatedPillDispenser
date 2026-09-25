@@ -52,7 +52,9 @@ python pipeline.py --mode mock --headless
 ## Run with Arduino later
 
 Check the drive train on its own first — camera and telemetry out of the way, shaft
-out of the carousel hub. Wiring and expected output are in `firmware/README.md`.
+out of the carousel hub. Wiring is in
+[`docs/diagrams/bench_wiring_3pad.png`](../docs/diagrams/bench_wiring_3pad.png), and the
+expected output is in `firmware/README.md`.
 
 ```bash
 python bench_servo.py --cmd PING          # link only, nothing moves
