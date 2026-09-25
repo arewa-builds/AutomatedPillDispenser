@@ -32,19 +32,37 @@ logging.basicConfig(
 logger = logging.getLogger("pipeline")
 
 
-def open_camera(index: int = CAMERA_INDEX) -> cv2.VideoCapture:
-    try:
-        capture = cv2.VideoCapture(index)
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
-    except Exception:
-        logger.exception("Failed to open camera index %s", index)
-        raise
+def _capture_backends() -> list[tuple[int, str]]:
+    """DirectShow first on Windows. The default MSMF backend often reports a closed camera."""
+    if sys.platform == "win32" and hasattr(cv2, "CAP_DSHOW"):
+        return [(cv2.CAP_DSHOW, "dshow"), (cv2.CAP_ANY, "default")]
+    return [(cv2.CAP_ANY, "default")]
 
-    if not capture.isOpened():
+
+def try_open_camera(index: int = CAMERA_INDEX) -> cv2.VideoCapture | None:
+    """Open a camera, releasing any backend that does not actually start."""
+    for backend, name in _capture_backends():
+        try:
+            capture = cv2.VideoCapture(index, backend)
+        except Exception:
+            logger.exception("Camera index %s failed to open via %s", index, name)
+            continue
+        if capture.isOpened():
+            capture.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+            logger.info("Camera index %s opened via %s", index, name)
+            return capture
+        capture.release()
+        logger.info("Camera index %s did not open via %s", index, name)
+    return None
+
+
+def open_camera(index: int = CAMERA_INDEX) -> cv2.VideoCapture:
+    capture = try_open_camera(index)
+    if capture is None:
         raise RuntimeError(
             f"Camera index {index} could not be opened. "
-            "On a laptop, confirm privacy settings allow camera access."
+            "Allow desktop apps to use the camera, and close anything else that has it."
         )
     return capture
 
@@ -191,7 +209,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.headless or (force_mock and not _camera_available()):
         if not args.headless and force_mock:
-            logger.warning("Camera unavailable in this environment; falling back to headless smoke")
+            logger.warning(
+                "Camera index %s did not open; falling back to headless smoke. "
+                "The face confidence and pill count in that log line are placeholders, "
+                "not a detection. Allow desktop apps to use the camera and close anything else using it.",
+                CAMERA_INDEX,
+            )
         try:
             run_headless_smoke(bridge, writer)
             return 0
@@ -224,13 +247,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _camera_available(index: int = CAMERA_INDEX) -> bool:
-    try:
-        cap = cv2.VideoCapture(index)
-        ok = cap.isOpened()
-        cap.release()
-        return ok
-    except Exception:
+    capture = try_open_camera(index)
+    if capture is None:
         return False
+    capture.release()
+    return True
 
 
 if __name__ == "__main__":
