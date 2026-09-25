@@ -104,10 +104,21 @@ only node the two rails share** — nothing from the boost output goes near `3V3
 or `VIN`, so a servo brownout cannot reset the board mid-cycle.
 
 These small modules give roughly 500–600 mA at 5 V and an MG90S can pull more than that
-against a jam, so check the output holds above 4.5 V while a step runs. If it sags:
+against a jam. With a meter, check the output holds above 4.5 V while a step runs. Without
+one, the symptoms are the substitute: a stuttering horn, a servo that keeps buzzing after
+it arrives, or a Nano that disconnects from USB mid-move all mean the module is sagging —
 1000 µF instead of 470 µF, or halve `SLEW_DEG_PER_S` to spread the same move over twice
 the time, or run the bench check off a USB power bank and save the LiPo for the untethered
 demo.
+
+**No meter.** Read the silkscreen instead of a voltage. On the boost module the cell side
+is `VI`, the servo side is `VO`, and `GND` is shared; on the HW-373 the cell is on `B+/B−`
+and the boost takes `OUT+/OUT−`. With the servo's red lead still unplugged, power the
+chain for a few seconds and touch nothing — the boost module and the TP4056 should stay
+cool (warm is fine, hot means a short). Then plug the servo in and start with `--wiggle`:
+a few degrees each way is enough to prove the wiring without a reading. A horn that sits
+still while the script prints `ACK_PULSE` usually means `VI`/`VO` are swapped, or the
+Nano's ground never reached the shared `GND` pad.
 
 Two more things bite here. The Nano 33 BLE's **`5V` pin is disconnected from the factory** —
 it only carries USB power once the `VUSB` solder jumper on the underside is bridged —
