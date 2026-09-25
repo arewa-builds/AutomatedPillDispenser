@@ -170,7 +170,10 @@ top of the sketch and one runtime trim.
 1. **Find the ends.** `PULSE <us>` commands a raw pulse anywhere in 500–2500 µs, which
    is wider than the calibrated ends on purpose: finding them is the point.
    `python edge/bench_servo.py --ends` creeps outward from 1500 µs in 100 µs steps and
-   asks, after each one, whether the horn actually moved. Only a `y` counts; Enter by
+   asks, after each one, whether the horn moved further the same way. `y` continues,
+   `n` means it only buzzed in place (that is the stop), and `q` means it jumped back
+   the other way, which is the pulse going past the feedback pot — the hunt stops
+   there rather than stripping the gears. Enter by
    itself is ignored, because holding it down used to run into the 500–2500 µs envelope
    and print those limits as if they were the stops. It backs off 50 µs from the last
    pulse that moved and, if you type both dial readings, prints `TRAVEL_DEG` and whether

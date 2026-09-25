@@ -325,7 +325,7 @@ def ask_moved() -> str:
     """
     while True:
         try:
-            answer = input("    did the horn move? [y/n/q]: ").strip().lower()
+            answer = input("    did it move further the same way? [y/n/q]: ").strip().lower()
         except EOFError:
             return "q"
         if answer.startswith(("y", "n", "q")):
@@ -351,7 +351,11 @@ def find_ends(link: NanoLink) -> int:
     """Guided hunt for the ends: creep outward from centre until motion stops."""
     greet(link)
     print("\n  Creeping out from 1500 us in 100 us steps.")
-    print("  After each step say whether the horn actually moved: y, n, or q.")
+    print("  After each step:")
+    print("    y  it moved further, the same way")
+    print("    n  it only buzzed or twitched where it was — that is the stop")
+    print("    q  it jumped back the other way — stop; commanding further can strip the gears")
+    print("  The horn swings back to centre between the two directions on purpose.")
     print("  Enter by itself does nothing, so holding it down cannot invent an end.\n")
 
     measured: dict[str, int] = {}
@@ -382,7 +386,14 @@ def find_ends(link: NanoLink) -> int:
                 print(f"    refused at {nxt} us — {reply.last!r}")
                 break
             print(f"    {nxt} us, reached after {reply.elapsed_ms} ms")
-            if ask_moved() != "y":
+            answer = ask_moved()
+            if answer == "q":
+                print("    kept the previous pulse. A jump the other way means this one")
+                print("    went past the feedback pot.")
+                break
+            if answer != "y":
+                print("    kept the previous pulse. Buzzing in place is the horn against")
+                print("    its stop, not more travel.")
                 break
             last_moving = nxt
             us = nxt
