@@ -94,6 +94,29 @@ def test_table_name_cannot_carry_sql() -> None:
     raise AssertionError("identifier with SQL was accepted")
 
 
+def test_unset_catalog_is_omitted_from_the_statement() -> None:
+    config = config_from_env(
+        {
+            "DATABRICKS_HOST": "https://x",
+            "DATABRICKS_TOKEN": "t",
+            "DATABRICKS_WAREHOUSE_ID": "w",
+            "DATABRICKS_CATALOG": "   ",
+        }
+    )
+    assert config is not None
+    assert config.catalog is None
+    assert config.schema == "pill_dispenser"
+    assert config.table == "bronze_dispense_events"
+    assert config.qualified_name == "pill_dispenser.bronze_dispense_events"
+    client = _FakeClient([{"statement_id": "s-0", "status": {"state": "SUCCEEDED"}}])
+    sink = DatabricksSink(config, client)
+    assert sink.send(_event()) is True
+    payload = client.posted[0]
+    assert "catalog" not in payload
+    assert payload["schema"] == "pill_dispenser"
+    assert "INSERT INTO bronze_dispense_events" in payload["statement"]
+
+
 def test_insert_uses_parameters_and_not_the_token_in_the_body() -> None:
     client = _FakeClient([{"statement_id": "s-1", "status": {"state": "SUCCEEDED"}}])
     sink = DatabricksSink(_config(), client)
@@ -155,6 +178,7 @@ if __name__ == "__main__":
     test_browser_path_is_stripped_from_the_host()
     test_dotenv_parser_skips_comments_and_quotes()
     test_table_name_cannot_carry_sql()
+    test_unset_catalog_is_omitted_from_the_statement()
     test_insert_uses_parameters_and_not_the_token_in_the_body()
     test_pending_statement_is_polled()
     test_rejected_insert_returns_false()

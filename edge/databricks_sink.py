@@ -12,9 +12,12 @@ Required environment variables:
 
 Optional, with these defaults:
 
-    DATABRICKS_CATALOG       main
+    DATABRICKS_CATALOG       unset — use the warehouse's current catalog
     DATABRICKS_SCHEMA        pill_dispenser
     DATABRICKS_TABLE         bronze_dispense_events
+
+The live table is pill_dispenser.bronze_dispense_events. Set DATABRICKS_CATALOG
+only when that schema lives in a named catalog other than the warehouse default.
 
 Create the table once with databricks/sql/bronze_dispense_events.sql.
 Copy edge/.env.example to edge/.env and fill in the three values. The sink
@@ -69,13 +72,19 @@ class DatabricksConfig:
     host: str
     token: str
     warehouse_id: str
-    catalog: str
+    catalog: str | None
     schema: str
     table: str
 
     @property
     def table_sql(self) -> str:
         return self.table
+
+    @property
+    def qualified_name(self) -> str:
+        if self.catalog:
+            return f"{self.catalog}.{self.schema}.{self.table}"
+        return f"{self.schema}.{self.table}"
 
 
 def _identifier(value: str, name: str) -> str:
@@ -150,7 +159,8 @@ def config_from_env(env: dict[str, str] | None = None) -> DatabricksConfig | Non
     warehouse = source.get("DATABRICKS_WAREHOUSE_ID", "").strip()
     if not host or not token or not warehouse:
         return None
-    catalog = _identifier(source.get("DATABRICKS_CATALOG", "main").strip() or "main", "catalog")
+    raw_catalog = source.get("DATABRICKS_CATALOG", "").strip()
+    catalog = _identifier(raw_catalog, "catalog") if raw_catalog else None
     schema = _identifier(source.get("DATABRICKS_SCHEMA", "pill_dispenser").strip() or "pill_dispenser", "schema")
     table = _identifier(
         source.get("DATABRICKS_TABLE", "bronze_dispense_events").strip() or "bronze_dispense_events",
@@ -235,11 +245,9 @@ class DatabricksSink:
             logger.info("event=databricks_sink_off reason=missing_host_token_or_warehouse")
             return None
         logger.info(
-            "event=databricks_sink_on host=%s catalog=%s schema=%s table=%s",
+            "event=databricks_sink_on host=%s table=%s",
             config.host,
-            config.catalog,
-            config.schema,
-            config.table,
+            config.qualified_name,
         )
         return cls(config, UrllibStatementClient(config.host, config.token))
 
@@ -247,13 +255,14 @@ class DatabricksSink:
         """Insert one telemetry dict. False on any failure; the caller keeps going."""
         payload = {
             "warehouse_id": self._config.warehouse_id,
-            "catalog": self._config.catalog,
             "schema": self._config.schema,
             "statement": INSERT_SQL.format(table=self._config.table_sql),
             "parameters": _parameters(event),
             "wait_timeout": "30s",
             "on_wait_timeout": "CANCEL",
         }
+        if self._config.catalog:
+            payload["catalog"] = self._config.catalog
         try:
             result = self._execute(payload)
         except Exception:
@@ -267,12 +276,10 @@ class DatabricksSink:
         statement_id = result.get("statement_id", "")
         if state == "SUCCEEDED":
             logger.info(
-                "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s.%s.%s",
+                "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s",
                 statement_id,
                 event.get("patient_id"),
-                self._config.catalog,
-                self._config.schema,
-                self._config.table,
+                self._config.qualified_name,
             )
             return True
         error = (result.get("status") or {}).get("error") or {}

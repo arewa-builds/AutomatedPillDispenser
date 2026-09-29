@@ -85,10 +85,10 @@ python databricks_sink.py          # one test row, patient_id databricks_path_te
 python pipeline.py --mode serial --port COM3
 ```
 
-Optional: `DATABRICKS_CATALOG` (default `main`), `DATABRICKS_SCHEMA` (default `pill_dispenser`), `DATABRICKS_TABLE` (default `bronze_dispense_events`). A row landed when the log says `event=databricks_insert_ok`. Query it with:
+The insert targets `pill_dispenser.bronze_dispense_events` in the warehouse's current catalog. Set `DATABRICKS_CATALOG` only if that schema lives somewhere else. `DATABRICKS_SCHEMA` defaults to `pill_dispenser` and `DATABRICKS_TABLE` defaults to `bronze_dispense_events`. A row landed when the log says `event=databricks_insert_ok`. Query it with:
 
 ```sql
-SELECT * FROM main.pill_dispenser.bronze_dispense_events ORDER BY event_ts DESC LIMIT 20;
+SELECT * FROM pill_dispenser.bronze_dispense_events ORDER BY event_ts DESC LIMIT 20;
 ```
 
 ## Modules
