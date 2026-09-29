@@ -85,7 +85,7 @@ python databricks_sink.py          # one test row, patient_id databricks_path_te
 python pipeline.py --mode serial --port COM3
 ```
 
-The insert targets `pill_dispenser.bronze_dispense_events`. With `DATABRICKS_CATALOG` unset, the sink looks up which catalog holds that table and inserts there. `DATABRICKS_SCHEMA` defaults to `pill_dispenser` and `DATABRICKS_TABLE` defaults to `bronze_dispense_events`. `python databricks_sink.py` sends the latest event already in `logs/telemetry/`. A row landed when the log says `event=databricks_insert_ok`. Query it with:
+The insert targets `pill_dispenser.bronze_dispense_events`. With `DATABRICKS_CATALOG` unset, the sink selects the Hive Metastore catalog, which is where that schema lives in the SQL editor. `DATABRICKS_SCHEMA` defaults to `pill_dispenser` and `DATABRICKS_TABLE` defaults to `bronze_dispense_events`. `python databricks_sink.py` sends the latest event already in `logs/telemetry/`. A row landed when the log says `event=databricks_insert_ok`. Query it with:
 
 ```sql
 SELECT * FROM pill_dispenser.bronze_dispense_events ORDER BY event_ts DESC LIMIT 20;

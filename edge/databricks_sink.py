@@ -12,14 +12,14 @@ Required environment variables:
 
 Optional, with these defaults:
 
-    DATABRICKS_CATALOG       unset — look up the catalog that holds the table
+    DATABRICKS_CATALOG       hive_metastore
     DATABRICKS_SCHEMA        pill_dispenser
     DATABRICKS_TABLE         bronze_dispense_events
 
-The live table is pill_dispenser.bronze_dispense_events. With the catalog unset,
-the sink asks system.information_schema which catalog that table is in, then
-inserts there. The warehouse default (often main) is not assumed. Set
-DATABRICKS_CATALOG only to skip that lookup.
+The live table is pill_dispenser.bronze_dispense_events. In the SQL editor that
+schema stands on its own. The warehouse API's default catalog is main, so an
+unset catalog would look for main.pill_dispenser and miss the table. Leaving
+DATABRICKS_CATALOG unset selects the Hive Metastore catalog instead.
 
 Create the table once with databricks/sql/bronze_dispense_events.sql.
 Copy edge/.env.example to edge/.env and fill in the three values. The sink
@@ -68,14 +68,9 @@ INSERT INTO {table} (
 )
 """.strip()
 
-# Identifiers below are validated before this is formatted. A parameterized
-# comparison against information_schema is not reliable on every warehouse.
-LOOKUP_SQL = """
-SELECT table_catalog
-FROM system.information_schema.tables
-WHERE table_schema = '{schema}'
-  AND table_name = '{table}'
-""".strip()
+# A schema created in the SQL editor as `pill_dispenser` lives in the Hive
+# Metastore. The warehouse API otherwise prefixes its own default catalog.
+HIVE_METASTORE_CATALOG = "hive_metastore"
 
 
 @dataclass(frozen=True)
@@ -83,18 +78,16 @@ class DatabricksConfig:
     host: str
     token: str
     warehouse_id: str
-    catalog: str | None
+    catalog: str
     schema: str
     table: str
 
     @property
     def table_sql(self) -> str:
-        return self.table
+        return f"{self.schema}.{self.table}"
 
     @property
     def qualified_name(self) -> str:
-        if self.catalog:
-            return f"{self.catalog}.{self.schema}.{self.table}"
         return f"{self.schema}.{self.table}"
 
 
@@ -171,7 +164,7 @@ def config_from_env(env: dict[str, str] | None = None) -> DatabricksConfig | Non
     if not host or not token or not warehouse:
         return None
     raw_catalog = source.get("DATABRICKS_CATALOG", "").strip()
-    catalog = _identifier(raw_catalog, "catalog") if raw_catalog else None
+    catalog = _identifier(raw_catalog, "catalog") if raw_catalog else HIVE_METASTORE_CATALOG
     schema = _identifier(source.get("DATABRICKS_SCHEMA", "pill_dispenser").strip() or "pill_dispenser", "schema")
     table = _identifier(
         source.get("DATABRICKS_TABLE", "bronze_dispense_events").strip() or "bronze_dispense_events",
@@ -242,20 +235,10 @@ class UrllibStatementClient:
             raise
 
 
-def _data_rows(result: dict) -> list[list[str]]:
-    data = (result.get("result") or {}).get("data_array") or []
-    rows: list[list[str]] = []
-    for row in data:
-        if isinstance(row, list):
-            rows.append(["" if cell is None else str(cell) for cell in row])
-    return rows
-
-
 class DatabricksSink:
     def __init__(self, config: DatabricksConfig, client: UrllibStatementClient) -> None:
         self._config = config
         self._client = client
-        self._resolved_catalog = config.catalog
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "DatabricksSink | None":
@@ -266,20 +249,18 @@ class DatabricksSink:
             logger.info("event=databricks_sink_off reason=missing_host_token_or_warehouse")
             return None
         logger.info(
-            "event=databricks_sink_on host=%s table=%s",
+            "event=databricks_sink_on host=%s table=%s catalog=%s",
             config.host,
             config.qualified_name,
+            config.catalog,
         )
         return cls(config, UrllibStatementClient(config.host, config.token))
 
     def send(self, event: dict) -> bool:
         """Insert one telemetry dict. False on any failure; the caller keeps going."""
-        catalog = self._catalog_for_insert()
-        if catalog is None:
-            return False
         payload = {
             "warehouse_id": self._config.warehouse_id,
-            "catalog": catalog,
+            "catalog": self._config.catalog,
             "schema": self._config.schema,
             "statement": INSERT_SQL.format(table=self._config.table_sql),
             "parameters": _parameters(event),
@@ -297,13 +278,13 @@ class DatabricksSink:
 
         state = (result.get("status") or {}).get("state", "")
         statement_id = result.get("statement_id", "")
-        table_name = f"{catalog}.{self._config.schema}.{self._config.table}"
         if state == "SUCCEEDED":
             logger.info(
-                "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s",
+                "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s catalog=%s",
                 statement_id,
                 event.get("patient_id"),
-                table_name,
+                self._config.qualified_name,
+                self._config.catalog,
             )
             return True
         error = (result.get("status") or {}).get("error") or {}
@@ -314,75 +295,6 @@ class DatabricksSink:
             error.get("message", ""),
         )
         return False
-
-    def _catalog_for_insert(self) -> str | None:
-        if self._resolved_catalog:
-            return self._resolved_catalog
-        found = self._lookup_catalog()
-        if found:
-            self._resolved_catalog = found
-        return found
-
-    def _lookup_catalog(self) -> str | None:
-        """Find the one catalog that holds schema.table. None if that is not unique."""
-        schema = self._config.schema
-        table = self._config.table
-        payload = {
-            "warehouse_id": self._config.warehouse_id,
-            "statement": LOOKUP_SQL.format(schema=schema, table=table),
-            "wait_timeout": "30s",
-            "on_wait_timeout": "CANCEL",
-        }
-        try:
-            result = self._execute(payload)
-        except Exception:
-            logger.exception(
-                "event=databricks_catalog_lookup_failed table=%s.%s",
-                schema,
-                table,
-            )
-            return None
-        state = (result.get("status") or {}).get("state", "")
-        if state != "SUCCEEDED":
-            error = (result.get("status") or {}).get("error") or {}
-            logger.error(
-                "event=databricks_catalog_lookup_rejected state=%s message=%s",
-                state,
-                error.get("message", ""),
-            )
-            return None
-        catalogs: list[str] = []
-        for row in _data_rows(result):
-            name = row[0].strip() if row else ""
-            if not name:
-                continue
-            if not _IDENT.match(name):
-                logger.error("event=databricks_catalog_unusable catalog=%s", name)
-                continue
-            if name not in catalogs:
-                catalogs.append(name)
-        if len(catalogs) == 1:
-            logger.info(
-                "event=databricks_catalog_resolved catalog=%s table=%s.%s",
-                catalogs[0],
-                schema,
-                table,
-            )
-            return catalogs[0]
-        if not catalogs:
-            logger.error(
-                "event=databricks_table_missing table=%s.%s",
-                schema,
-                table,
-            )
-            return None
-        logger.error(
-            "event=databricks_catalog_ambiguous catalogs=%s table=%s.%s",
-            ",".join(catalogs),
-            schema,
-            table,
-        )
-        return None
 
     def _execute(self, payload: dict) -> dict:
         result = self._client.post_statement(payload)
