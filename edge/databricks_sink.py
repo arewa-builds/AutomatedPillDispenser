@@ -12,12 +12,14 @@ Required environment variables:
 
 Optional, with these defaults:
 
-    DATABRICKS_CATALOG       unset — use the warehouse's current catalog
+    DATABRICKS_CATALOG       unset — look up the catalog that holds the table
     DATABRICKS_SCHEMA        pill_dispenser
     DATABRICKS_TABLE         bronze_dispense_events
 
-The live table is pill_dispenser.bronze_dispense_events. Set DATABRICKS_CATALOG
-only when that schema lives in a named catalog other than the warehouse default.
+The live table is pill_dispenser.bronze_dispense_events. With the catalog unset,
+the sink asks system.information_schema which catalog that table is in, then
+inserts there. The warehouse default (often main) is not assumed. Set
+DATABRICKS_CATALOG only to skip that lookup.
 
 Create the table once with databricks/sql/bronze_dispense_events.sql.
 Copy edge/.env.example to edge/.env and fill in the three values. The sink
@@ -64,6 +66,15 @@ INSERT INTO {table} (
   :hardware_source,
   :retry_count
 )
+""".strip()
+
+# Identifiers below are validated before this is formatted. A parameterized
+# comparison against information_schema is not reliable on every warehouse.
+LOOKUP_SQL = """
+SELECT table_catalog
+FROM system.information_schema.tables
+WHERE table_schema = '{schema}'
+  AND table_name = '{table}'
 """.strip()
 
 
@@ -231,10 +242,20 @@ class UrllibStatementClient:
             raise
 
 
+def _data_rows(result: dict) -> list[list[str]]:
+    data = (result.get("result") or {}).get("data_array") or []
+    rows: list[list[str]] = []
+    for row in data:
+        if isinstance(row, list):
+            rows.append(["" if cell is None else str(cell) for cell in row])
+    return rows
+
+
 class DatabricksSink:
     def __init__(self, config: DatabricksConfig, client: UrllibStatementClient) -> None:
         self._config = config
         self._client = client
+        self._resolved_catalog = config.catalog
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "DatabricksSink | None":
@@ -253,16 +274,18 @@ class DatabricksSink:
 
     def send(self, event: dict) -> bool:
         """Insert one telemetry dict. False on any failure; the caller keeps going."""
+        catalog = self._catalog_for_insert()
+        if catalog is None:
+            return False
         payload = {
             "warehouse_id": self._config.warehouse_id,
+            "catalog": catalog,
             "schema": self._config.schema,
             "statement": INSERT_SQL.format(table=self._config.table_sql),
             "parameters": _parameters(event),
             "wait_timeout": "30s",
             "on_wait_timeout": "CANCEL",
         }
-        if self._config.catalog:
-            payload["catalog"] = self._config.catalog
         try:
             result = self._execute(payload)
         except Exception:
@@ -274,12 +297,13 @@ class DatabricksSink:
 
         state = (result.get("status") or {}).get("state", "")
         statement_id = result.get("statement_id", "")
+        table_name = f"{catalog}.{self._config.schema}.{self._config.table}"
         if state == "SUCCEEDED":
             logger.info(
                 "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s",
                 statement_id,
                 event.get("patient_id"),
-                self._config.qualified_name,
+                table_name,
             )
             return True
         error = (result.get("status") or {}).get("error") or {}
@@ -290,6 +314,75 @@ class DatabricksSink:
             error.get("message", ""),
         )
         return False
+
+    def _catalog_for_insert(self) -> str | None:
+        if self._resolved_catalog:
+            return self._resolved_catalog
+        found = self._lookup_catalog()
+        if found:
+            self._resolved_catalog = found
+        return found
+
+    def _lookup_catalog(self) -> str | None:
+        """Find the one catalog that holds schema.table. None if that is not unique."""
+        schema = self._config.schema
+        table = self._config.table
+        payload = {
+            "warehouse_id": self._config.warehouse_id,
+            "statement": LOOKUP_SQL.format(schema=schema, table=table),
+            "wait_timeout": "30s",
+            "on_wait_timeout": "CANCEL",
+        }
+        try:
+            result = self._execute(payload)
+        except Exception:
+            logger.exception(
+                "event=databricks_catalog_lookup_failed table=%s.%s",
+                schema,
+                table,
+            )
+            return None
+        state = (result.get("status") or {}).get("state", "")
+        if state != "SUCCEEDED":
+            error = (result.get("status") or {}).get("error") or {}
+            logger.error(
+                "event=databricks_catalog_lookup_rejected state=%s message=%s",
+                state,
+                error.get("message", ""),
+            )
+            return None
+        catalogs: list[str] = []
+        for row in _data_rows(result):
+            name = row[0].strip() if row else ""
+            if not name:
+                continue
+            if not _IDENT.match(name):
+                logger.error("event=databricks_catalog_unusable catalog=%s", name)
+                continue
+            if name not in catalogs:
+                catalogs.append(name)
+        if len(catalogs) == 1:
+            logger.info(
+                "event=databricks_catalog_resolved catalog=%s table=%s.%s",
+                catalogs[0],
+                schema,
+                table,
+            )
+            return catalogs[0]
+        if not catalogs:
+            logger.error(
+                "event=databricks_table_missing table=%s.%s",
+                schema,
+                table,
+            )
+            return None
+        logger.error(
+            "event=databricks_catalog_ambiguous catalogs=%s table=%s.%s",
+            ",".join(catalogs),
+            schema,
+            table,
+        )
+        return None
 
     def _execute(self, payload: dict) -> dict:
         result = self._client.post_statement(payload)
@@ -305,25 +398,74 @@ class DatabricksSink:
         return result
 
 
+def latest_logged_event(directory: Path | None = None) -> dict | None:
+    """Return the last dispense event already written under logs/telemetry."""
+    folder = directory if directory is not None else Path(__file__).resolve().parent / "logs" / "telemetry"
+    try:
+        files = sorted(folder.glob("dispense_events_*.jsonl"))
+    except OSError as exc:
+        logger.error("event=telemetry_log_unreadable path=%s error=%s", folder, exc)
+        return None
+    last = ""
+    for path in files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            logger.error("event=telemetry_log_unreadable path=%s error=%s", path, exc)
+            continue
+        for line in text.splitlines():
+            if line.strip():
+                last = line.strip()
+    if not last:
+        return None
+    try:
+        event = json.loads(last)
+    except json.JSONDecodeError as exc:
+        logger.error("event=telemetry_log_bad_json error=%s", exc)
+        return None
+    required = {
+        "timestamp",
+        "patient_id",
+        "face_match_confidence",
+        "pills_detected",
+        "dispense_latency_ms",
+        "event_status",
+        "hardware_source",
+    }
+    if not isinstance(event, dict) or not required <= event.keys():
+        logger.error("event=telemetry_log_incomplete")
+        return None
+    return event
+
+
 def main() -> int:
-    """Insert one obviously-fake row so the warehouse path can be checked before a demo."""
+    """Insert the latest logged dispense event. A fake row is used only when no log exists."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
     sink = DatabricksSink.from_env()
     if sink is None:
         logger.error("event=databricks_test_skipped reason=missing_env")
         return 2
-    from telemetry import build_event
+    event = latest_logged_event()
+    if event is None:
+        from telemetry import build_event
 
-    event = build_event(
-        face_match_confidence=0.0,
-        pills_detected=0,
-        dispense_latency_ms=0,
-        event_status="failure",
-        hardware_source="mock",
-        patient_id="databricks_path_test",
-        retry_count=0,
-    )
-    return 0 if sink.send(event.to_dict()) else 1
+        event = build_event(
+            face_match_confidence=0.0,
+            pills_detected=0,
+            dispense_latency_ms=0,
+            event_status="failure",
+            hardware_source="mock",
+            patient_id="databricks_path_test",
+            retry_count=0,
+        ).to_dict()
+        logger.info("event=databricks_using_placeholder patient_id=%s", event["patient_id"])
+    else:
+        logger.info(
+            "event=databricks_using_logged_event patient_id=%s event_status=%s",
+            event.get("patient_id"),
+            event.get("event_status"),
+        )
+    return 0 if sink.send(event) else 1
 
 
 if __name__ == "__main__":
