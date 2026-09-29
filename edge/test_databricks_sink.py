@@ -9,6 +9,7 @@ from databricks_sink import (
     DatabricksSink,
     config_from_env,
     normalize_host,
+    parse_dotenv,
 )
 
 
@@ -58,6 +59,24 @@ def test_missing_env_disables_the_sink() -> None:
 
 def test_host_without_scheme_is_https() -> None:
     assert normalize_host("adb-1.cloud.databricks.com/") == "https://adb-1.cloud.databricks.com"
+
+
+def test_browser_path_is_stripped_from_the_host() -> None:
+    assert normalize_host("https://dbc-1.cloud.databricks.com/oidc") == "https://dbc-1.cloud.databricks.com"
+
+
+def test_dotenv_parser_skips_comments_and_quotes() -> None:
+    parsed = parse_dotenv(
+        """
+        # comment
+        DATABRICKS_HOST=https://example.cloud.databricks.com
+        DATABRICKS_TOKEN="dapi-secret"
+        export DATABRICKS_WAREHOUSE_ID=wh-1
+        """
+    )
+    assert parsed["DATABRICKS_HOST"] == "https://example.cloud.databricks.com"
+    assert parsed["DATABRICKS_TOKEN"] == "dapi-secret"
+    assert parsed["DATABRICKS_WAREHOUSE_ID"] == "wh-1"
 
 
 def test_table_name_cannot_carry_sql() -> None:
@@ -133,6 +152,8 @@ def test_transport_error_returns_false() -> None:
 if __name__ == "__main__":
     test_missing_env_disables_the_sink()
     test_host_without_scheme_is_https()
+    test_browser_path_is_stripped_from_the_host()
+    test_dotenv_parser_skips_comments_and_quotes()
     test_table_name_cannot_carry_sql()
     test_insert_uses_parameters_and_not_the_token_in_the_body()
     test_pending_statement_is_polled()
