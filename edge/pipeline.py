@@ -22,7 +22,7 @@ import numpy as np
 from config import CAMERA_INDEX, FRAME_HEIGHT, FRAME_WIDTH, RETRY_LIMIT
 from face_gate import FaceGate
 from hardware_bridge import HardwareBridge
-from pill_verify import PillVerifier
+from pill_verify import PillVerifier, latest_frame
 from telemetry import TelemetryWriter, build_event
 
 logging.basicConfig(
@@ -30,6 +30,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger("pipeline")
+
+WINDOW = "Pill Dispenser Edge (q=quit)"
 
 
 def _capture_backends() -> list[tuple[int, str]]:
@@ -48,6 +50,7 @@ def try_open_camera(index: int = CAMERA_INDEX) -> cv2.VideoCapture | None:
             logger.exception("Camera index %s failed to open via %s", index, name)
             continue
         if capture.isOpened():
+            capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
             logger.info("Camera index %s opened via %s", index, name)
@@ -97,7 +100,49 @@ def annotate(frame, face_result, pill_result, status: str):
             (240, 240, 240),
             2,
         )
+        # Contours are in tray-ROI coordinates. Draw them back on the full frame.
+        origin_x, origin_y = int(w * 0.20), int(h * 0.45)
+        for x, y, bw, bh in pill_result.contours:
+            cv2.rectangle(
+                frame,
+                (origin_x + x, origin_y + y),
+                (origin_x + x + bw, origin_y + y + bh),
+                (40, 220, 220),
+                2,
+            )
     return frame
+
+
+def settle_camera(capture: cv2.VideoCapture, frames: int = 15) -> None:
+    """Show the first frames instead of counting a face against a black image.
+
+    Laptop cameras spend the first part of a second settling exposure. Those
+    frames used to be the ones the face gate was waiting on, which is the slow
+    startup before the first dispense.
+    """
+    started = time.perf_counter()
+    shown = 0
+    for _ in range(frames):
+        ok, frame = capture.read()
+        if not ok or frame is None:
+            continue
+        shown += 1
+        cv2.putText(
+            frame,
+            "Camera settling...",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (240, 240, 240),
+            2,
+        )
+        cv2.imshow(WINDOW, frame)
+        cv2.waitKey(1)
+    logger.info(
+        "Camera settled in %s ms (%s frames)",
+        int((time.perf_counter() - started) * 1000),
+        shown,
+    )
 
 
 def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: PillVerifier, writer: TelemetryWriter):
@@ -117,7 +162,7 @@ def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: Pi
             else f"Face present={face_result.present} conf={face_result.confidence:.2f}"
         )
         display = annotate(frame.copy(), face_result, pill_result, status)
-        cv2.imshow("Pill Dispenser Edge (q=quit)", display)
+        cv2.imshow(WINDOW, display)
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             return False
@@ -131,6 +176,14 @@ def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: Pi
     hw_latency = 0
 
     while retries <= RETRY_LIMIT:
+        ok, base_frame = latest_frame(capture, discard=4)
+        if not ok or base_frame is None:
+            logger.error("No frame for the tray baseline; not dispensing")
+            event_status = "failure"
+            break
+        baseline = verifier.count_pills(base_frame).count
+        logger.info("Tray baseline %s before dispense", baseline)
+
         dispense = bridge.dispense()
         hw_latency = dispense.latency_ms
         if not dispense.ok:
@@ -138,8 +191,18 @@ def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: Pi
             event_status = "failure"
             break
 
-        pill_result = verifier.wait_for_pill(capture)
-        pills_detected = pill_result.count
+        def show_verify(frame, result, baseline=baseline):
+            annotate(
+                frame,
+                face_result,
+                result,
+                f"Need {baseline + 1} in the tray (was {baseline})",
+            )
+            cv2.imshow(WINDOW, frame)
+            cv2.waitKey(1)
+
+        pill_result = verifier.wait_for_pill(capture, baseline=baseline, on_frame=show_verify)
+        pills_detected = max(0, pill_result.count - baseline)
         if pill_result.matched:
             event_status = "success" if retries == 0 else "retry"
             break
@@ -168,8 +231,13 @@ def run_cycle(capture, face_gate: FaceGate, bridge: HardwareBridge, verifier: Pi
         ok, frame = capture.read()
         if not ok:
             break
-        display = annotate(frame, face_result, pill_result, f"Result: {event_status}")
-        cv2.imshow("Pill Dispenser Edge (q=quit)", display)
+        display = annotate(
+            frame,
+            face_result,
+            pill_result,
+            f"Result: {event_status}  new={pills_detected}",
+        )
+        cv2.imshow(WINDOW, display)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             return False
     face_gate.reset()
@@ -227,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
     completed = 0
     try:
         capture = open_camera()
+        settle_camera(capture)
         while True:
             cont = run_cycle(capture, face_gate, bridge, verifier, writer)
             if not cont:

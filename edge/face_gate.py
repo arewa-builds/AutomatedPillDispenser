@@ -20,6 +20,10 @@ from config import FACE_MIN_CONFIDENCE, FACE_STABLE_FRAMES
 
 logger = logging.getLogger(__name__)
 
+# BlazeFace does not need a 720p frame to decide that a face is present. Running
+# it on the full camera frame is what makes the preview crawl at startup.
+DETECT_WIDTH = 640
+
 MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_PATH = MODEL_DIR / "blaze_face_short_range.tflite"
 MODEL_URL = (
@@ -34,6 +38,20 @@ class FaceGateResult:
     confidence: float
     stable: bool
     box: tuple[int, int, int, int] | None
+
+
+def _downscale(frame_bgr: np.ndarray) -> tuple[np.ndarray, float]:
+    """Return (frame, scale) with the width capped at DETECT_WIDTH. scale is new/old."""
+    height, width = frame_bgr.shape[:2]
+    if width <= DETECT_WIDTH or width == 0:
+        return frame_bgr, 1.0
+    scale = DETECT_WIDTH / float(width)
+    small = cv2.resize(
+        frame_bgr,
+        (DETECT_WIDTH, max(1, int(height * scale))),
+        interpolation=cv2.INTER_AREA,
+    )
+    return small, scale
 
 
 def ensure_face_model(path: Path = MODEL_PATH) -> Path:
@@ -149,19 +167,26 @@ class FaceGate:
         self._streak = 0
 
     def evaluate(self, frame_bgr: np.ndarray) -> FaceGateResult:
+        small, scale = _downscale(frame_bgr)
         try:
             if self._backend == "tasks":
-                return self._evaluate_tasks(frame_bgr)
-            if self._backend == "solutions":
-                return self._evaluate_solutions(frame_bgr)
-            if self._backend == "haar":
-                return self._evaluate_haar(frame_bgr)
+                result = self._evaluate_tasks(small)
+            elif self._backend == "solutions":
+                result = self._evaluate_solutions(small)
+            elif self._backend == "haar":
+                result = self._evaluate_haar(small)
+            else:
+                self._streak = 0
+                return FaceGateResult(False, 0.0, False, None)
         except Exception:
             logger.exception("Face detection failed on frame (backend=%s)", self._backend)
             self._streak = 0
             return FaceGateResult(False, 0.0, False, None)
-        self._streak = 0
-        return FaceGateResult(False, 0.0, False, None)
+        if result.box is not None and scale != 1.0:
+            x, y, w, h = result.box
+            inv = 1.0 / scale
+            result.box = (int(x * inv), int(y * inv), int(w * inv), int(h * inv))
+        return result
 
     def _finish(self, confidence: float, box: tuple[int, int, int, int] | None) -> FaceGateResult:
         if box is None or confidence < self.min_confidence:

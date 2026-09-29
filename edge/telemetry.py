@@ -59,13 +59,17 @@ def build_event(
 
 
 class TelemetryWriter:
-    """Appends one JSON object per line for later Bronze ingestion."""
+    """Appends one JSON object per line, and inserts the same row into Databricks when configured."""
 
     def __init__(self, directory: Path = TELEMETRY_DIR) -> None:
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
         day = datetime.now(timezone.utc).strftime("%Y%m%d")
         self.path = self.directory / f"dispense_events_{day}.jsonl"
+        # Imported here so a missing optional path cannot break local logging.
+        from databricks_sink import DatabricksSink
+
+        self._sink = DatabricksSink.from_env()
 
     def write(self, event: DispenseTelemetry) -> Path:
         try:
@@ -75,4 +79,9 @@ class TelemetryWriter:
         except Exception:
             logger.exception("Failed to write telemetry to %s", self.path)
             raise
+        if self._sink is not None:
+            try:
+                self._sink.send(event.to_dict())
+            except Exception:
+                logger.exception("event=databricks_send_failed path=%s", self.path)
         return self.path

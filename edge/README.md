@@ -39,7 +39,7 @@ python pipeline.py --mode mock
 
 Flow: stable face (MediaPipe Tasks) → mock `DISPENSE` → OpenCV tray pill count → `logs/telemetry/*.jsonl`.
 
-Place candy in the lower-central tray ROI (drawn on screen). Press `q` to quit.
+Place candy in the lower-central tray ROI (drawn on screen). Press `q` to quit. A second dose counts when the tray goes from 1 pill to 2; the first pill stays where it landed. The preview spends its first frames on "Camera settling..." so exposure finishes before the face check starts.
 
 If the log shows `FaceGate backend: MediaPipe Tasks`, camera face detection is enabled.
 
@@ -72,6 +72,26 @@ python pipeline.py --mode serial --port /dev/ttyACM0   # Linux
 python pipeline.py --mode serial --port COM3           # Windows
 ```
 
+## Send each event to Databricks
+
+The pipeline still writes `logs/telemetry/*.jsonl`. When the three variables below are set, it also `INSERT`s that same row into a Bronze table through the SQL Statement Execution API. A warehouse that is down is logged and does not stop the dispense.
+
+Create the table once, in the SQL editor, from `databricks/sql/bronze_dispense_events.sql`. Then, in the same shell as the pipeline:
+
+```powershell
+$env:DATABRICKS_HOST = "https://<workspace>.cloud.databricks.com"
+$env:DATABRICKS_TOKEN = "dapi..."
+$env:DATABRICKS_WAREHOUSE_ID = "<warehouse id>"
+python databricks_sink.py          # one test row, patient_id databricks_path_test
+python pipeline.py --mode serial --port COM3
+```
+
+Optional: `DATABRICKS_CATALOG` (default `main`), `DATABRICKS_SCHEMA` (default `pill_dispenser`), `DATABRICKS_TABLE` (default `bronze_dispense_events`). A row landed when the log says `event=databricks_insert_ok`. Query it with:
+
+```sql
+SELECT * FROM main.pill_dispenser.bronze_dispense_events ORDER BY event_ts DESC LIMIT 20;
+```
+
 ## Modules
 
 | File | Role |
@@ -81,7 +101,8 @@ python pipeline.py --mode serial --port COM3           # Windows
 | `hardware_bridge.py` | PySerial bridge with mock fallback |
 | `mock_arduino.py` | In-process Nano serial emulator |
 | `bench_servo.py` | Bench bring-up: turn check, endpoint hunt, raw commands |
-| `telemetry.py` | JSONL event writer |
+| `telemetry.py` | JSONL event writer, plus the Databricks insert when configured |
+| `databricks_sink.py` | One-row INSERT into the Bronze table via the SQL warehouse |
 | `pipeline.py` | Orchestration |
 
 Tune HSV / area thresholds in `config.py` for your candy and lighting.
