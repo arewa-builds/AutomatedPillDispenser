@@ -17,7 +17,9 @@ Optional, with these defaults:
     DATABRICKS_TABLE         bronze_dispense_events
 
 Create the table once with databricks/sql/bronze_dispense_events.sql.
-If the host, token, or warehouse is unset, the sink stays off and the
+Copy edge/.env.example to edge/.env and fill in the three values. The sink
+reads that file on startup. A variable already set in the shell wins.
+If the host, token, or warehouse is still unset, the sink stays off and the
 pipeline keeps logging locally.
 """
 
@@ -31,6 +33,8 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +85,61 @@ def _identifier(value: str, name: str) -> str:
 
 
 def normalize_host(host: str) -> str:
+    """Workspace root only. A browser path such as /oidc makes the API URL 404."""
     host = host.strip().rstrip("/")
     if not host.startswith("http://") and not host.startswith("https://"):
         host = "https://" + host
-    return host
+    parsed = urlparse(host)
+    return urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
+
+
+def parse_dotenv(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        if key:
+            values[key] = value
+    return values
+
+
+def load_dotenv() -> None:
+    """Load edge/.env, then the repo-root .env, then the current directory.
+
+    Existing process environment variables are left alone, so a shell override
+    still wins. Values are never logged.
+    """
+    candidates = [
+        Path(__file__).resolve().parent / ".env",
+        Path(__file__).resolve().parent.parent / ".env",
+        Path.cwd() / ".env",
+    ]
+    seen: set[Path] = set()
+    for path in candidates:
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        try:
+            parsed = parse_dotenv(path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            logger.error("event=dotenv_read_failed path=%s error=%s", path, exc)
+            continue
+        applied = 0
+        for key, value in parsed.items():
+            if key not in os.environ:
+                os.environ[key] = value
+                applied += 1
+        logger.info("event=dotenv_loaded path=%s keys=%s", path, applied)
 
 
 def config_from_env(env: dict[str, str] | None = None) -> DatabricksConfig | None:
@@ -173,6 +228,8 @@ class DatabricksSink:
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "DatabricksSink | None":
+        if env is None:
+            load_dotenv()
         config = config_from_env(env)
         if config is None:
             logger.info("event=databricks_sink_off reason=missing_host_token_or_warehouse")

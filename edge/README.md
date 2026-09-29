@@ -76,12 +76,11 @@ python pipeline.py --mode serial --port COM3           # Windows
 
 The pipeline still writes `logs/telemetry/*.jsonl`. When the three variables below are set, it also `INSERT`s that same row into a Bronze table through the SQL Statement Execution API. A warehouse that is down is logged and does not stop the dispense.
 
-Create the table once, in the SQL editor, from `databricks/sql/bronze_dispense_events.sql`. Then, in the same shell as the pipeline:
+Create the table once, in the SQL editor, from `databricks/sql/bronze_dispense_events.sql`. Then copy the example and fill in a new personal access token. The host is the workspace root, with no `/oidc` on the end.
 
 ```powershell
-$env:DATABRICKS_HOST = "https://<workspace>.cloud.databricks.com"
-$env:DATABRICKS_TOKEN = "dapi..."
-$env:DATABRICKS_WAREHOUSE_ID = "<warehouse id>"
+copy .env.example .env
+# edit .env, then:
 python databricks_sink.py          # one test row, patient_id databricks_path_test
 python pipeline.py --mode serial --port COM3
 ```
