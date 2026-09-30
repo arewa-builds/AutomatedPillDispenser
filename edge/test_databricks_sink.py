@@ -97,7 +97,15 @@ def test_table_name_cannot_carry_sql() -> None:
     raise AssertionError("identifier with SQL was accepted")
 
 
-def test_unset_catalog_uses_the_hive_metastore() -> None:
+def _found(rows: list[list[str]]) -> dict:
+    return {
+        "statement_id": "lookup",
+        "status": {"state": "SUCCEEDED"},
+        "result": {"data_array": rows},
+    }
+
+
+def test_unset_catalog_uses_the_catalog_that_holds_the_table() -> None:
     config = config_from_env(
         {
             "DATABRICKS_HOST": "https://x",
@@ -107,17 +115,61 @@ def test_unset_catalog_uses_the_hive_metastore() -> None:
         }
     )
     assert config is not None
-    assert config.catalog == "hive_metastore"
-    assert config.schema == "pill_dispenser"
+    assert config.catalog is None
     assert config.qualified_name == "pill_dispenser.bronze_dispense_events"
-    client = _FakeClient([{"statement_id": "s-0", "status": {"state": "SUCCEEDED"}}])
+    client = _FakeClient(
+        [
+            _found([["workspace", "pill_dispenser"]]),
+            {"statement_id": "s-0", "status": {"state": "SUCCEEDED"}},
+        ]
+    )
     sink = DatabricksSink(config, client)
     assert sink.send(_event()) is True
-    payload = client.posted[0]
-    assert payload["catalog"] == "hive_metastore"
+    lookup, payload = client.posted
+    assert lookup["catalog"] == "system"
+    assert "system.information_schema.tables" in lookup["statement"]
+    assert "hive_metastore" not in lookup["statement"]
+    assert payload["catalog"] == "workspace"
     assert payload["schema"] == "pill_dispenser"
     assert "INSERT INTO pill_dispenser.bronze_dispense_events" in payload["statement"]
-    assert "main" not in payload["statement"]
+
+
+def test_catalog_named_pill_dispenser_is_used() -> None:
+    config = config_from_env(
+        {
+            "DATABRICKS_HOST": "https://x",
+            "DATABRICKS_TOKEN": "t",
+            "DATABRICKS_WAREHOUSE_ID": "w",
+        }
+    )
+    assert config is not None
+    client = _FakeClient(
+        [
+            _found([["pill_dispenser", "default"]]),
+            {"statement_id": "s-0", "status": {"state": "SUCCEEDED"}},
+        ]
+    )
+    sink = DatabricksSink(config, client)
+    assert sink.send(_event()) is True
+    payload = client.posted[1]
+    assert payload["catalog"] == "pill_dispenser"
+    assert payload["schema"] == "default"
+    assert "INSERT INTO default.bronze_dispense_events" in payload["statement"]
+
+
+def test_missing_table_skips_the_insert() -> None:
+    config = config_from_env(
+        {
+            "DATABRICKS_HOST": "https://x",
+            "DATABRICKS_TOKEN": "t",
+            "DATABRICKS_WAREHOUSE_ID": "w",
+        }
+    )
+    assert config is not None
+    client = _FakeClient([_found([])])
+    sink = DatabricksSink(config, client)
+    assert sink.send(_event()) is False
+    assert len(client.posted) == 1
 
 
 def test_latest_logged_event_is_the_last_jsonl_line() -> None:
@@ -206,7 +258,9 @@ if __name__ == "__main__":
     test_browser_path_is_stripped_from_the_host()
     test_dotenv_parser_skips_comments_and_quotes()
     test_table_name_cannot_carry_sql()
-    test_unset_catalog_uses_the_hive_metastore()
+    test_unset_catalog_uses_the_catalog_that_holds_the_table()
+    test_catalog_named_pill_dispenser_is_used()
+    test_missing_table_skips_the_insert()
     test_latest_logged_event_is_the_last_jsonl_line()
     test_insert_uses_parameters_and_not_the_token_in_the_body()
     test_pending_statement_is_polled()

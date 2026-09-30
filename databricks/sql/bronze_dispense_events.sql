@@ -1,6 +1,6 @@
 -- Run once in the Databricks SQL editor, on the same warehouse the edge sink uses.
--- The schema is pill_dispenser, as shown in the editor. The edge sink selects the
--- Hive Metastore catalog so the warehouse does not rewrite this name under main.
+-- The name in the editor is pill_dispenser.bronze_dispense_events. Leave
+-- DATABRICKS_CATALOG unset so the sink looks up the catalog that holds this table.
 
 CREATE SCHEMA IF NOT EXISTS pill_dispenser;
 
