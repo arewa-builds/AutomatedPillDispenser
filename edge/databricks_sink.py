@@ -289,12 +289,12 @@ class DatabricksSink:
         located = self._locate()
         if located is None:
             return False
-        catalog, schema = located
+        catalog = located[0]
         payload = {
             "warehouse_id": self._config.warehouse_id,
             "catalog": catalog,
-            "schema": schema,
-            "statement": INSERT_SQL.format(table=f"{schema}.{self._config.table}"),
+            "schema": self._config.schema,
+            "statement": INSERT_SQL.format(table=self._config.table_sql),
             "parameters": _parameters(event),
             "wait_timeout": "30s",
             "on_wait_timeout": "CANCEL",
@@ -312,11 +312,10 @@ class DatabricksSink:
         statement_id = result.get("statement_id", "")
         if state == "SUCCEEDED":
             logger.info(
-                "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s.%s catalog=%s",
+                "event=databricks_insert_ok statement_id=%s patient_id=%s table=%s catalog=%s",
                 statement_id,
                 event.get("patient_id"),
-                schema,
-                self._config.table,
+                self._config.qualified_name,
                 catalog,
             )
             return True

@@ -153,8 +153,8 @@ def test_catalog_named_pill_dispenser_is_used() -> None:
     assert sink.send(_event()) is True
     payload = client.posted[1]
     assert payload["catalog"] == "pill_dispenser"
-    assert payload["schema"] == "default"
-    assert "INSERT INTO default.bronze_dispense_events" in payload["statement"]
+    assert payload["schema"] == "pill_dispenser"
+    assert "INSERT INTO pill_dispenser.bronze_dispense_events" in payload["statement"]
 
 
 def test_missing_table_skips_the_insert() -> None:
@@ -205,6 +205,7 @@ def test_insert_uses_parameters_and_not_the_token_in_the_body() -> None:
     assert payload["warehouse_id"] == "wh-1"
     assert payload["catalog"] == "main"
     assert payload["schema"] == "pill_dispenser"
+    assert "INSERT INTO pill_dispenser.bronze_dispense_events" in payload["statement"]
     assert ":patient_id" in payload["statement"]
     assert "patient_demo_001" not in payload["statement"]
     names = {item["name"]: item for item in payload["parameters"]}
