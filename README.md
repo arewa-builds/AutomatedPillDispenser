@@ -19,6 +19,8 @@ Medication non-adherence costs the healthcare system billions and hits elderly a
 
 Published dashboard (SQL warehouse, `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`): <https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766>
 
+![Pill Dispenser Event Insights dashboard for patient_demo_001: weekly and monthly event counts, events by status, and adherence summary](docs/diagrams/databricks_dashboard.png)
+
 ## Repository
 
 ```
