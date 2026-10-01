@@ -193,10 +193,6 @@ WHERE patient_id = 'patient_demo_001';
 
 -- One row per calendar day, including the five days with no dispense.
 -- Plot Sum of event_count (0 on 10–14 Aug) or Sum of missed_count (2 on those days).
-DROP VIEW IF EXISTS pill_dispenser.dashboard_monthly;
-DROP VIEW IF EXISTS pill_dispenser.dashboard_weekly;
-DROP VIEW IF EXISTS pill_dispenser.dashboard_daily;
-
 CREATE OR REPLACE TABLE pill_dispenser.dashboard_daily AS
 WITH days AS (
   SELECT explode(sequence(DATE '2026-07-01', DATE '2026-09-29', INTERVAL 1 DAY)) AS dose_date
@@ -259,3 +255,5 @@ FROM pill_dispenser.dashboard_weekly
 WHERE missed_count > 0;
 
 SELECT * FROM pill_dispenser.gold_adherence_7d WHERE patient_id = 'patient_demo_001';
+
+SHOW TABLES IN pill_dispenser LIKE 'dashboard_*';
