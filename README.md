@@ -13,9 +13,13 @@ Medication non-adherence costs the healthcare system billions and hits elderly a
 | Embedded | Arduino Nano 33 BLE, MG90S (positional), LiPo + TP4056 | Carousel indexing — 45° per dose, absolute stops |
 | Edge CV | Python 3.10+, OpenCV, MediaPipe, PySerial | Face gate + pill contour/color/count |
 | Data | Databricks Delta Lake (Bronze → Silver → Gold) | Telemetry ingest & compliance transforms |
-| ML / BI | scikit-learn, MLflow, Power BI Desktop | Adherence risk forecast + clinical KPIs |
+| ML / BI | scikit-learn, MLflow, [Databricks dashboard](https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766) | Adherence risk forecast + clinical KPIs |
 
 **Budget:** ~$73–$93 hardware (laptop camera preferred) · **$93–$108** all-in with cloud trial · Timeline **Aug 10 – Sep 20, 2026**.
+
+Published dashboard (SQL warehouse, `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`): <https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766>
+
+![Pill Dispenser Event Insights dashboard for patient_demo_001: weekly and monthly event counts, events by status, and adherence summary](docs/diagrams/databricks_dashboard.png)
 
 ## Repository
 
@@ -34,7 +38,7 @@ docs/             Schedule, BOM, architecture notes
 
 | Invoke | Role |
 | :--- | :--- |
-| `/medtech-lead-architect` | Firmware, vision, Databricks, MLflow, Power BI |
+| `/medtech-lead-architect` | Firmware, vision, Databricks, MLflow, Databricks dashboard |
 | `/cad-embedded-hardware` | OpenSCAD/STL: carousel, latch, Nano/MG90S/LiPo housing |
 
 See `AGENTS.md` and `cad/README.md`.
