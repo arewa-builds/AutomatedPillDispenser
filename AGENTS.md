@@ -29,7 +29,7 @@ This repository builds an **Automated Pill Dispensing & Visual Medication Compli
 3. **Week 3** — Serial/BLE integration + JSON telemetry  
 4. **Week 4** — Databricks Bronze & Silver  
 5. **Week 5** — Gold + MLflow adherence risk  
-6. **Week 6** — Databricks dashboard, E2E test, docs  
+6. **Week 6** — Databricks dashboard, E2E test, docs. Published dashboard: <https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766>  
 
 Canonical schedule and BOM: `docs/project-context.md`. Product brief: `project.md`. CAD guide: `cad/README.md`.
 

@@ -44,7 +44,7 @@ You have complete architectural mastery over the 4 primary operational layers of
 
 4. **Machine Learning & Analytics Layer (MLflow & Databricks dashboard):**
    - **Frameworks:** `scikit-learn`, `MLflow`, Databricks dashboard.
-   - **Logic:** Adherence risk forecasting models (predicting missed doses based on progressive dispense time-drift), model experiment tracking, and a Databricks dashboard on the SQL warehouse (KPIs, adherence trendlines, verification log charts) over `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`.
+   - **Logic:** Adherence risk forecasting models (predicting missed doses based on progressive dispense time-drift), model experiment tracking, and a Databricks dashboard on the SQL warehouse (KPIs, adherence trendlines, verification log charts) over `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`. Published: https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766.
 
 ### Repository layout (canonical)
 - `firmware/` — Arduino C++ for Nano 33 BLE (servo state machine, serial/BLE commands)

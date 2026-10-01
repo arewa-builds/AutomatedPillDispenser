@@ -4,6 +4,8 @@
 -- About one dose in eleven is a miss. Re-running the INSERT does not duplicate rows.
 --
 -- Paste the whole script into the Databricks SQL editor.
+-- Published dashboard:
+-- https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766
 
 CREATE SCHEMA IF NOT EXISTS pill_dispenser;
 
