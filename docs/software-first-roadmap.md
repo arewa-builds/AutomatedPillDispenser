@@ -30,4 +30,4 @@ You can complete a large share of Weeks 2–5 before the Arduino kit arrives. Us
 
 ## Parts order (when ready)
 
-See BOM in `docs/project-context.md`. Prefer **laptop camera** to keep hardware near **~$73**.
+See BOM in `docs/project-context.md`. Prefer the **laptop camera** so the build stays inside the **$100–$150** project cost.

@@ -4,7 +4,7 @@ An intelligent, 3D-printed pill station that physically dispenses medication, vi
 
 The Problem: Non-adherence to medication costs the healthcare system billions and severely impacts elderly or neurodivergent patients.
 
-Hardware Rig ($100–$160):
+Hardware Rig ($100–$150):
 
 3D-printed continuous-rotation or servo-driven carousel dispenser connected to an Arduino.
 

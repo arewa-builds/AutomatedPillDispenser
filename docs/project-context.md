@@ -2,7 +2,7 @@
 
 **Project:** Automated Pill Dispensing & Visual Medication Compliance Monitor  
 **Timeline:** August 10 – September 20, 2026 (6 weeks)  
-**Budget target:** Well under $300 USD; expected **$93–$108** (or ~$73–$88 with laptop camera)
+**Budget target:** **$100–$150 USD**
 
 ## 1. Resource & Cost List
 
@@ -28,7 +28,7 @@
 | Databricks dashboard | Included with the Databricks workspace. Published at <https://dbc-841e48ce-abec.cloud.databricks.com/dashboardsv3/01f1bc66f608184bb87e728ccb7f308e/published?o=7474657233579766>. Reads `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`. | $0.00 |
 | **Subtotal Software/Cloud** | | **$0.00 – $15.00** |
 
-**Estimated Total Budget: $93.00 – $108.00 USD** (laptop-camera path can reduce hardware to ~$73).
+**Project cost: $100–$150 USD.** The table above is the component list. The project range covers those parts plus shipping, tax, and spares. The laptop camera keeps the camera line at $0.
 
 ## 2. Detailed 6-Week Execution Schedule
 
