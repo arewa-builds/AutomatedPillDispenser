@@ -1,9 +1,10 @@
 -- Run once in the Databricks SQL editor, on the same warehouse the edge sink uses.
--- Defaults match DATABRICKS_CATALOG / DATABRICKS_SCHEMA / DATABRICKS_TABLE.
+-- The name in the editor is pill_dispenser.bronze_dispense_events. Leave
+-- DATABRICKS_CATALOG unset so the sink looks up the catalog that holds this table.
 
-CREATE SCHEMA IF NOT EXISTS main.pill_dispenser;
+CREATE SCHEMA IF NOT EXISTS pill_dispenser;
 
-CREATE TABLE IF NOT EXISTS main.pill_dispenser.bronze_dispense_events (
+CREATE TABLE IF NOT EXISTS pill_dispenser.bronze_dispense_events (
   event_ts TIMESTAMP,
   patient_id STRING,
   face_match_confidence DOUBLE,

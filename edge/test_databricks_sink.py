@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 
+from pathlib import Path
+
 from databricks_sink import (
     DatabricksConfig,
     DatabricksSink,
     config_from_env,
+    latest_logged_event,
     normalize_host,
     parse_dotenv,
 )
@@ -94,6 +97,106 @@ def test_table_name_cannot_carry_sql() -> None:
     raise AssertionError("identifier with SQL was accepted")
 
 
+def _found(rows: list[list[str]]) -> dict:
+    return {
+        "statement_id": "lookup",
+        "status": {"state": "SUCCEEDED"},
+        "result": {"data_array": rows},
+    }
+
+
+def test_unset_catalog_uses_the_catalog_that_holds_the_table() -> None:
+    config = config_from_env(
+        {
+            "DATABRICKS_HOST": "https://x",
+            "DATABRICKS_TOKEN": "t",
+            "DATABRICKS_WAREHOUSE_ID": "w",
+            "DATABRICKS_CATALOG": "   ",
+        }
+    )
+    assert config is not None
+    assert config.catalog is None
+    assert config.qualified_name == "pill_dispenser.bronze_dispense_events"
+    client = _FakeClient(
+        [
+            _found([["workspace", "pill_dispenser"]]),
+            {"statement_id": "s-0", "status": {"state": "SUCCEEDED"}},
+        ]
+    )
+    sink = DatabricksSink(config, client)
+    assert sink.send(_event()) is True
+    lookup, payload = client.posted
+    assert lookup["catalog"] == "system"
+    assert "system.information_schema.tables" in lookup["statement"]
+    assert "hive_metastore" not in lookup["statement"]
+    assert payload["catalog"] == "workspace"
+    assert payload["schema"] == "pill_dispenser"
+    assert "INSERT INTO pill_dispenser.bronze_dispense_events" in payload["statement"]
+
+
+def test_catalog_named_pill_dispenser_is_used() -> None:
+    config = config_from_env(
+        {
+            "DATABRICKS_HOST": "https://x",
+            "DATABRICKS_TOKEN": "t",
+            "DATABRICKS_WAREHOUSE_ID": "w",
+        }
+    )
+    assert config is not None
+    client = _FakeClient(
+        [
+            _found([["pill_dispenser", "default"]]),
+            {"statement_id": "s-0", "status": {"state": "SUCCEEDED"}},
+        ]
+    )
+    sink = DatabricksSink(config, client)
+    assert sink.send(_event()) is True
+    payload = client.posted[1]
+    assert payload["catalog"] == "pill_dispenser"
+    assert payload["schema"] == "pill_dispenser"
+    assert "INSERT INTO pill_dispenser.bronze_dispense_events" in payload["statement"]
+
+
+def test_missing_table_skips_the_insert() -> None:
+    config = config_from_env(
+        {
+            "DATABRICKS_HOST": "https://x",
+            "DATABRICKS_TOKEN": "t",
+            "DATABRICKS_WAREHOUSE_ID": "w",
+        }
+    )
+    assert config is not None
+    client = _FakeClient([_found([])])
+    sink = DatabricksSink(config, client)
+    assert sink.send(_event()) is False
+    assert len(client.posted) == 1
+
+
+def test_latest_logged_event_is_the_last_jsonl_line() -> None:
+    folder = Path(__file__).resolve().parent / "_tmp_telemetry_test"
+    folder.mkdir(exist_ok=True)
+    try:
+        log = folder / "dispense_events_20260929.jsonl"
+        log.write_text(
+            "\n".join(
+                [
+                    '{"timestamp":"2026-09-29T23:42:56.839Z","patient_id":"patient_demo_001","face_match_confidence":0.7499,"pills_detected":2,"dispense_latency_ms":7085,"event_status":"retry","hardware_source":"serial","retry_count":1}',
+                    '{"timestamp":"2026-09-29T23:43:02.792Z","patient_id":"patient_demo_001","face_match_confidence":0.7947,"pills_detected":1,"dispense_latency_ms":2052,"event_status":"success","hardware_source":"serial","retry_count":0}',
+                ]
+            ),
+            encoding="utf-8",
+        )
+        event = latest_logged_event(folder)
+        assert event is not None
+        assert event["event_status"] == "success"
+        assert event["pills_detected"] == 1
+        assert event["timestamp"] == "2026-09-29T23:43:02.792Z"
+    finally:
+        for path in folder.glob("*"):
+            path.unlink()
+        folder.rmdir()
+
+
 def test_insert_uses_parameters_and_not_the_token_in_the_body() -> None:
     client = _FakeClient([{"statement_id": "s-1", "status": {"state": "SUCCEEDED"}}])
     sink = DatabricksSink(_config(), client)
@@ -102,6 +205,7 @@ def test_insert_uses_parameters_and_not_the_token_in_the_body() -> None:
     assert payload["warehouse_id"] == "wh-1"
     assert payload["catalog"] == "main"
     assert payload["schema"] == "pill_dispenser"
+    assert "INSERT INTO pill_dispenser.bronze_dispense_events" in payload["statement"]
     assert ":patient_id" in payload["statement"]
     assert "patient_demo_001" not in payload["statement"]
     names = {item["name"]: item for item in payload["parameters"]}
@@ -155,6 +259,10 @@ if __name__ == "__main__":
     test_browser_path_is_stripped_from_the_host()
     test_dotenv_parser_skips_comments_and_quotes()
     test_table_name_cannot_carry_sql()
+    test_unset_catalog_uses_the_catalog_that_holds_the_table()
+    test_catalog_named_pill_dispenser_is_used()
+    test_missing_table_skips_the_insert()
+    test_latest_logged_event_is_the_last_jsonl_line()
     test_insert_uses_parameters_and_not_the_token_in_the_body()
     test_pending_statement_is_polled()
     test_rejected_insert_returns_false()

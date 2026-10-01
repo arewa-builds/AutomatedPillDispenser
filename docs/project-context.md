@@ -55,7 +55,7 @@
 
 ### Week 4: Databricks Pipeline Development (Bronze & Silver)
 **Focus:** Ingest telemetry into Delta Lake via PySpark.  
-**Days 22–24:** Launch workspace; Bronze ingest of JSON payloads. The edge sink inserts each live event directly (`edge/databricks_sink.py` → `main.pill_dispenser.bronze_dispense_events`); the local medallion remains the offline stand-in.  
+**Days 22–24:** Launch workspace; Bronze ingest of JSON payloads. The edge sink inserts each live event directly (`edge/databricks_sink.py` → `pill_dispenser.bronze_dispense_events`, in the catalog that holds that table); the local medallion remains the offline stand-in.  
 **Days 25–27:** Silver — clean timestamps, compliance deltas vs schedule, dedupe hardware pings.  
 **Milestone 4:** Automated Bronze → Silver transforms.
 
