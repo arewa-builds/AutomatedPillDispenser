@@ -85,9 +85,7 @@ def annotate(frame, face_result, pill_result, status: str):
             2,
         )
 
-    h, w = frame.shape[:2]
-    y0, y1 = int(h * 0.45), int(h * 0.95)
-    x0, x1 = int(w * 0.20), int(w * 0.80)
+    x0, y0, x1, y1 = PillVerifier.roi_bounds(frame)
     cv2.rectangle(frame, (x0, y0), (x1, y1), (220, 180, 40), 1)
     cv2.putText(frame, status, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
     if pill_result is not None:
@@ -101,7 +99,7 @@ def annotate(frame, face_result, pill_result, status: str):
             2,
         )
         # Contours are in tray-ROI coordinates. Draw them back on the full frame.
-        origin_x, origin_y = int(w * 0.20), int(h * 0.45)
+        origin_x, origin_y = x0, y0
         for x, y, bw, bh in pill_result.contours:
             cv2.rectangle(
                 frame,

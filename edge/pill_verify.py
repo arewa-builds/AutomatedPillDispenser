@@ -15,7 +15,13 @@ from config import (
     PILL_HSV_UPPER,
     PILL_MAX_AREA,
     PILL_MIN_AREA,
+    PILL_ROI_X0,
+    PILL_ROI_X1,
+    PILL_ROI_Y0,
+    PILL_ROI_Y1,
     PILL_VERIFY_TIMEOUT_S,
+    PILL_WHITE_HSV_LOWER,
+    PILL_WHITE_HSV_UPPER,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,16 +78,27 @@ class PillVerifier:
         self.expected_count = expected_count
         self.hsv_lower = np.array(hsv_lower, dtype=np.uint8)
         self.hsv_upper = np.array(hsv_upper, dtype=np.uint8)
+        self.white_lower = np.array(PILL_WHITE_HSV_LOWER, dtype=np.uint8)
+        self.white_upper = np.array(PILL_WHITE_HSV_UPPER, dtype=np.uint8)
         self.min_area = min_area
         self.max_area = max_area
         self.timeout_s = timeout_s
 
     @staticmethod
-    def tray_roi(frame_bgr: np.ndarray) -> np.ndarray:
-        """Use the lower-central portion of the frame as the tray view."""
+    def roi_bounds(frame_bgr: np.ndarray) -> tuple[int, int, int, int]:
+        """Left, top, right, bottom of the catch tray, in frame pixels."""
         h, w = frame_bgr.shape[:2]
-        y0, y1 = int(h * 0.45), int(h * 0.95)
-        x0, x1 = int(w * 0.20), int(w * 0.80)
+        return (
+            int(w * PILL_ROI_X0),
+            int(h * PILL_ROI_Y0),
+            int(w * PILL_ROI_X1),
+            int(h * PILL_ROI_Y1),
+        )
+
+    @staticmethod
+    def tray_roi(frame_bgr: np.ndarray) -> np.ndarray:
+        """Crop to the catch tray. The rest of the desk is not a pill."""
+        x0, y0, x1, y1 = PillVerifier.roi_bounds(frame_bgr)
         return frame_bgr[y0:y1, x0:x1]
 
     def count_pills(self, frame_bgr: np.ndarray) -> PillVerifyResult:
@@ -90,11 +107,17 @@ class PillVerifier:
             roi = self.tray_roi(frame_bgr)
             blur = cv2.GaussianBlur(roi, (5, 5), 0)
             hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv, self.hsv_lower, self.hsv_upper)
+            # Kept separate so a bright patch of desk cannot swallow a capsule.
+            colored = cv2.inRange(hsv, self.hsv_lower, self.hsv_upper)
+            white = cv2.inRange(hsv, self.white_lower, self.white_upper)
             kernel = np.ones((3, 3), np.uint8)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = []
+            height, width = roi.shape[:2]
+            for mask in (colored, white):
+                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+                mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+                found, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                contours.extend(found)
         except Exception:
             logger.exception("Pill contour analysis failed")
             return PillVerifyResult(0, False, 0, [])
@@ -105,6 +128,9 @@ class PillVerifier:
             if area < self.min_area or area > self.max_area:
                 continue
             x, y, bw, bh = cv2.boundingRect(contour)
+            # A blob cut by the crop edge is the desk outside the tray.
+            if x <= 1 or y <= 1 or x + bw >= width - 1 or y + bh >= height - 1:
+                continue
             aspect = bw / float(bh) if bh else 0.0
             if aspect < 0.35 or aspect > 2.8:
                 continue
