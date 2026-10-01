@@ -1,7 +1,9 @@
--- One patient, thirty days, two doses a day (08:00 and 20:00).
--- Days 1–14 stay within a few minutes of the anchor. From day 15 the dose
--- slips later by about two minutes a day, which is the adherence signal.
--- About one dose in eleven is a miss. Re-running the INSERT does not duplicate rows.
+-- One patient, three months, two doses a day (08:00 and 20:00), 1 Jul–29 Sep 2026.
+-- 182 doses. 165 are taken. 17 are missed, scattered rather than every nth row,
+-- plus a few retries and a handful of later days. Most doses land 1–6 minutes
+-- after the anchor.
+-- The DELETE removes the previous synthetic rows for this patient, then the INSERT
+-- loads the new set. Live rows that are not in bronze_dispense_month stay put.
 --
 -- Paste the whole script into the Databricks SQL editor.
 -- Published dashboard:
@@ -20,9 +22,13 @@ CREATE TABLE IF NOT EXISTS pill_dispenser.bronze_dispense_events (
   retry_count INT
 );
 
+DELETE FROM pill_dispenser.bronze_dispense_events
+WHERE patient_id = 'patient_demo_001'
+  AND event_ts IN (SELECT event_ts FROM pill_dispenser.bronze_dispense_month);
+
 CREATE OR REPLACE TABLE pill_dispenser.bronze_dispense_month AS
 WITH days AS (
-  SELECT explode(sequence(DATE '2026-08-31', DATE '2026-09-29', INTERVAL 1 DAY)) AS dose_day
+  SELECT explode(sequence(DATE '2026-07-01', DATE '2026-09-29', INTERVAL 1 DAY)) AS dose_day
 ),
 slots AS (
   SELECT dose_day, 8 AS anchor_hour FROM days
@@ -33,35 +39,46 @@ numbered AS (
   SELECT
     dose_day,
     anchor_hour,
-    datediff(dose_day, DATE '2026-08-31') AS day_index,
+    datediff(dose_day, DATE '2026-07-01') AS day_index,
     row_number() OVER (ORDER BY dose_day, anchor_hour) AS n
   FROM slots
+),
+flagged AS (
+  SELECT
+    dose_day,
+    anchor_hour,
+    day_index,
+    n,
+    (day_index * 5 + CASE WHEN anchor_hour = 20 THEN 3 ELSE 0 END) % 14 = 0
+      OR (day_index % 28 = 12 AND anchor_hour = 20) AS missed
+  FROM numbered
 )
 SELECT
   dateadd(
     MINUTE,
     CASE
-      WHEN day_index < 14 THEN 2 + (n % 4)
-      ELSE 14 + (day_index - 14) * 2 + (n % 3)
+      WHEN day_index % 17 = 0 THEN 18 + (n % 12)
+      WHEN day_index >= 75 THEN 6 + (n % 8)
+      ELSE 1 + (n % 6)
     END,
     make_timestamp(year(dose_day), month(dose_day), day(dose_day), anchor_hour, 0, 0)
   ) AS event_ts,
   'patient_demo_001' AS patient_id,
   CASE
-    WHEN n % 22 = 0 THEN 0.0
-    WHEN n % 11 = 0 THEN 0.55
+    WHEN missed AND n % 2 = 0 THEN 0.0
+    WHEN missed THEN 0.55
     ELSE round(0.82 + (n % 15) * 0.01, 4)
   END AS face_match_confidence,
-  CASE WHEN n % 11 = 0 THEN 0 ELSE 1 END AS pills_detected,
+  CASE WHEN missed THEN 0 ELSE 1 END AS pills_detected,
   980 + (n % 8) * 70 AS dispense_latency_ms,
   CASE
-    WHEN n % 11 = 0 THEN 'failure'
-    WHEN n % 13 = 0 THEN 'retry'
+    WHEN missed THEN 'failure'
+    WHEN n % 17 = 0 THEN 'retry'
     ELSE 'success'
   END AS event_status,
   'serial' AS hardware_source,
-  CASE WHEN n % 11 = 0 OR n % 13 = 0 THEN 1 ELSE 0 END AS retry_count
-FROM numbered;
+  CASE WHEN missed OR n % 17 = 0 THEN 1 ELSE 0 END AS retry_count
+FROM flagged;
 
 INSERT INTO pill_dispenser.bronze_dispense_events (
   event_ts,
