@@ -2,8 +2,10 @@
 -- 182 scheduled doses. 172 are taken. 10 are missed: both doses on 10–14 Aug 2026.
 -- Those 10 stay in bronze_dispense_month and are not copied into bronze_dispense_events,
 -- so a count of events falls to 4 in the week of 10 Aug and to 52 in August.
--- A daily Count chart skips dates with no rows. dashboard_daily.event_count is 0 on
--- 10–14 Aug, and missed_count is 2 on each of those days (10 misses).
+-- A daily Count chart skips dates with no rows. The tables
+-- pill_dispenser.dashboard_daily, dashboard_weekly, and dashboard_monthly
+-- keep those days. event_count is 0 on 10–14 Aug, and missed_count is 2
+-- on each of those days (10 misses).
 -- Most taken doses land 1–6 minutes after the anchor. A few are later, and a few are retries.
 -- The DELETE removes the previous synthetic rows for this patient, then the INSERT
 -- loads the taken set. Live rows that are not in bronze_dispense_month stay put.
@@ -191,14 +193,19 @@ WHERE patient_id = 'patient_demo_001';
 
 -- One row per calendar day, including the five days with no dispense.
 -- Plot Sum of event_count (0 on 10–14 Aug) or Sum of missed_count (2 on those days).
-CREATE OR REPLACE VIEW pill_dispenser.dashboard_daily AS
+DROP VIEW IF EXISTS pill_dispenser.dashboard_monthly;
+DROP VIEW IF EXISTS pill_dispenser.dashboard_weekly;
+DROP VIEW IF EXISTS pill_dispenser.dashboard_daily;
+
+CREATE OR REPLACE TABLE pill_dispenser.dashboard_daily AS
 WITH days AS (
   SELECT explode(sequence(DATE '2026-07-01', DATE '2026-09-29', INTERVAL 1 DAY)) AS dose_date
 ),
 taken AS (
-  SELECT dose_date, count(*) AS event_count
-  FROM pill_dispenser.dashboard_doses
-  GROUP BY dose_date
+  SELECT CAST(event_ts AS DATE) AS dose_date, count(*) AS event_count
+  FROM pill_dispenser.bronze_dispense_events
+  WHERE patient_id = 'patient_demo_001'
+  GROUP BY CAST(event_ts AS DATE)
 ),
 missed AS (
   SELECT CAST(event_ts AS DATE) AS dose_date, count(*) AS missed_count
@@ -214,7 +221,7 @@ FROM days AS d
 LEFT JOIN taken ON taken.dose_date = d.dose_date
 LEFT JOIN missed ON missed.dose_date = d.dose_date;
 
-CREATE OR REPLACE VIEW pill_dispenser.dashboard_weekly AS
+CREATE OR REPLACE TABLE pill_dispenser.dashboard_weekly AS
 SELECT
   week_start,
   sum(event_count) AS event_count,
@@ -228,7 +235,7 @@ FROM (
 )
 GROUP BY week_start;
 
-CREATE OR REPLACE VIEW pill_dispenser.dashboard_monthly AS
+CREATE OR REPLACE TABLE pill_dispenser.dashboard_monthly AS
 SELECT
   month_start,
   sum(event_count) AS event_count,
