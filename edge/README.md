@@ -91,6 +91,8 @@ The insert targets `pill_dispenser.bronze_dispense_events`. With `DATABRICKS_CAT
 SELECT * FROM pill_dispenser.bronze_dispense_events ORDER BY event_ts DESC LIMIT 20;
 ```
 
+Silver and Gold are not updated by that insert. After a demo, paste `databricks/sql/refresh_silver_gold.sql` into the SQL editor, then refresh the dashboard. The newest Silver rows and the Gold total are the last two results.
+
 ## Modules
 
 | File | Role |
