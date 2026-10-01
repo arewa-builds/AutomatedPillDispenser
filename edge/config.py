@@ -14,12 +14,13 @@ FACE_MIN_CONFIDENCE = 0.65
 FACE_STABLE_FRAMES = 8  # consecutive frames before allowing dispense
 
 # Pill verification (OpenCV) — tune for your candy / lighting
-# Fractions of the camera frame. This is the catch tray in the demo photo:
-# left of the laptop, right of the carousel, below the doorway.
-PILL_ROI_X0 = 0.35
-PILL_ROI_X1 = 0.46
-PILL_ROI_Y0 = 0.87
-PILL_ROI_Y1 = 0.96
+# Fractions of the camera frame. The catch tray, plus about an inch of
+# margin on every side. The tray sits left of the laptop and in front of
+# the carousel; 0.87 put the box on the keyboard.
+PILL_ROI_X0 = 0.12
+PILL_ROI_X1 = 0.37
+PILL_ROI_Y0 = 0.76
+PILL_ROI_Y1 = 0.99
 # Colored candy still matches this range. White capsules do not: their
 # saturation is near 0, so the room was counted and the pills were not.
 PILL_HSV_LOWER = (0, 40, 40)
