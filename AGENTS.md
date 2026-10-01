@@ -20,7 +20,7 @@ This repository builds an **Automated Pill Dispensing & Visual Medication Compli
 - Databricks: explicit `StructType` schemas — no production schema inference.
 - Camera default: laptop built-in index `0` (budget path).
 - CAD: parametric OpenSCAD, FDM-friendly (≤45° overhangs), exact Nano / MG90S / LiPo pockets.
-- Budget target: hardware under ~$100 USD; total ~$93–$108 with cloud trial.
+- Budget target: **$100–$150 USD**. Laptop camera stays the default.
 
 ## 6-week roadmap (Aug 10 – Sep 20, 2026)
 
