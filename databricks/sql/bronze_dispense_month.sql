@@ -1,9 +1,12 @@
 -- One patient, three months, two doses a day (08:00 and 20:00), 1 Jul–29 Sep 2026.
--- 182 doses. 165 are taken. 17 are missed, scattered rather than every nth row,
--- plus a few retries and a handful of later days. Most doses land 1–6 minutes
--- after the anchor.
+-- 182 scheduled doses. 172 are taken. 10 are missed: both doses on 10–14 Aug 2026.
+-- Those 10 stay in bronze_dispense_month and are not copied into bronze_dispense_events,
+-- so a count of events falls to 4 in the week of 10 Aug and to 52 in August.
+-- A daily Count chart skips dates with no rows. dashboard_daily.event_count is 0 on
+-- 10–14 Aug, and missed_count is 2 on each of those days (10 misses).
+-- Most taken doses land 1–6 minutes after the anchor. A few are later, and a few are retries.
 -- The DELETE removes the previous synthetic rows for this patient, then the INSERT
--- loads the new set. Live rows that are not in bronze_dispense_month stay put.
+-- loads the taken set. Live rows that are not in bronze_dispense_month stay put.
 --
 -- Paste the whole script into the Databricks SQL editor.
 -- Published dashboard:
@@ -49,8 +52,7 @@ flagged AS (
     anchor_hour,
     day_index,
     n,
-    (day_index * 5 + CASE WHEN anchor_hour = 20 THEN 3 ELSE 0 END) % 14 = 0
-      OR (day_index % 28 = 12 AND anchor_hour = 20) AS missed
+    dose_day BETWEEN DATE '2026-08-10' AND DATE '2026-08-14' AS missed
   FROM numbered
 )
 SELECT
@@ -100,7 +102,8 @@ SELECT
   hardware_source,
   retry_count
 FROM pill_dispenser.bronze_dispense_month AS month_rows
-WHERE NOT EXISTS (
+WHERE month_rows.event_status <> 'failure'
+  AND NOT EXISTS (
   SELECT 1
   FROM pill_dispenser.bronze_dispense_events AS existing
   WHERE existing.patient_id = month_rows.patient_id
@@ -156,11 +159,19 @@ SELECT
   patient_id,
   count(*) AS events,
   sum(CASE WHEN is_success THEN 1 ELSE 0 END) AS success_events,
+  count(*) - sum(CASE WHEN is_success THEN 1 ELSE 0 END) AS missed_events,
   round(sum(CASE WHEN is_success THEN 1 ELSE 0 END) / count(*), 4) AS adherence_rate_7d,
   round(avg(time_drift_minutes), 2) AS avg_time_drift_minutes,
   avg(time_drift_minutes) >= 15
     OR sum(CASE WHEN is_success THEN 1 ELSE 0 END) / count(*) < 0.85 AS high_adherence_risk
-FROM pill_dispenser.silver_dispense_events
+FROM (
+  SELECT patient_id, is_success, time_drift_minutes
+  FROM pill_dispenser.silver_dispense_events
+  UNION ALL
+  SELECT patient_id, false AS is_success, CAST(NULL AS DOUBLE) AS time_drift_minutes
+  FROM pill_dispenser.bronze_dispense_month
+  WHERE event_status = 'failure'
+)
 GROUP BY patient_id;
 
 CREATE OR REPLACE VIEW pill_dispenser.dashboard_doses AS
@@ -178,6 +189,66 @@ SELECT
 FROM pill_dispenser.silver_dispense_events
 WHERE patient_id = 'patient_demo_001';
 
-SELECT count(*) AS month_rows FROM pill_dispenser.bronze_dispense_month;
+-- One row per calendar day, including the five days with no dispense.
+-- Plot Sum of event_count (0 on 10–14 Aug) or Sum of missed_count (2 on those days).
+CREATE OR REPLACE VIEW pill_dispenser.dashboard_daily AS
+WITH days AS (
+  SELECT explode(sequence(DATE '2026-07-01', DATE '2026-09-29', INTERVAL 1 DAY)) AS dose_date
+),
+taken AS (
+  SELECT dose_date, count(*) AS event_count
+  FROM pill_dispenser.dashboard_doses
+  GROUP BY dose_date
+),
+missed AS (
+  SELECT CAST(event_ts AS DATE) AS dose_date, count(*) AS missed_count
+  FROM pill_dispenser.bronze_dispense_month
+  WHERE event_status = 'failure'
+  GROUP BY CAST(event_ts AS DATE)
+)
+SELECT
+  d.dose_date,
+  coalesce(taken.event_count, 0) AS event_count,
+  coalesce(missed.missed_count, 0) AS missed_count
+FROM days AS d
+LEFT JOIN taken ON taken.dose_date = d.dose_date
+LEFT JOIN missed ON missed.dose_date = d.dose_date;
+
+CREATE OR REPLACE VIEW pill_dispenser.dashboard_weekly AS
+SELECT
+  week_start,
+  sum(event_count) AS event_count,
+  sum(missed_count) AS missed_count
+FROM (
+  SELECT
+    CAST(date_trunc('WEEK', dose_date) AS DATE) AS week_start,
+    event_count,
+    missed_count
+  FROM pill_dispenser.dashboard_daily
+)
+GROUP BY week_start;
+
+CREATE OR REPLACE VIEW pill_dispenser.dashboard_monthly AS
+SELECT
+  month_start,
+  sum(event_count) AS event_count,
+  sum(missed_count) AS missed_count
+FROM (
+  SELECT
+    CAST(date_trunc('MONTH', dose_date) AS DATE) AS month_start,
+    event_count,
+    missed_count
+  FROM pill_dispenser.dashboard_daily
+)
+GROUP BY month_start;
+
+SELECT
+  count(*) AS scheduled_rows,
+  sum(CASE WHEN event_status = 'failure' THEN 1 ELSE 0 END) AS missed_rows
+FROM pill_dispenser.bronze_dispense_month;
+
+SELECT week_start, event_count, missed_count
+FROM pill_dispenser.dashboard_weekly
+WHERE missed_count > 0;
 
 SELECT * FROM pill_dispenser.gold_adherence_7d WHERE patient_id = 'patient_demo_001';
