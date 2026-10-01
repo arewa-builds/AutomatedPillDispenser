@@ -107,9 +107,11 @@ SELECT
     WHEN hour(event_ts) >= 17 AND hour(event_ts) < 23 THEN 'evening'
     ELSE 'night'
   END AS scheduled_window,
+  -- Minutes from the 08:00 or 20:00 anchor. Late and early are both a positive drift.
   round(
-    (
-      unix_timestamp(event_ts) - unix_timestamp(
+    abs(
+      timestampdiff(
+        MINUTE,
         make_timestamp(
           year(event_ts),
           month(event_ts),
@@ -117,9 +119,10 @@ SELECT
           CASE WHEN hour(event_ts) >= 5 AND hour(event_ts) < 17 THEN 8 ELSE 20 END,
           0,
           0
-        )
+        ),
+        event_ts
       )
-    ) / 60.0,
+    ),
     2
   ) AS time_drift_minutes
 FROM (
