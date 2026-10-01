@@ -80,7 +80,7 @@ def to_silver(row: dict[str, Any]) -> SilverRow:
     validate_bronze(row)
     ts = parse_ts(row["timestamp"])
     anchor = window_anchor(ts)
-    drift = (ts - anchor).total_seconds() / 60.0
+    drift = abs((ts - anchor).total_seconds() / 60.0)
     retry_count = int(row.get("retry_count", 0))
     return SilverRow(
         event_ts_utc=ts.isoformat().replace("+00:00", "Z"),
