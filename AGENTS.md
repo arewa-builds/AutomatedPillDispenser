@@ -1,12 +1,12 @@
 # Automated Pill Dispenser — Agent Guide
 
-This repository builds an **Automated Pill Dispensing & Visual Medication Compliance Monitor**: a low-cost MedTech prototype that dispenses medication, verifies patient presence and pill drop via computer vision, and tracks adherence risk in Databricks / MLflow / Power BI.
+This repository builds an **Automated Pill Dispensing & Visual Medication Compliance Monitor**: a low-cost MedTech prototype that dispenses medication, verifies patient presence and pill drop via computer vision, and tracks adherence risk in Databricks / MLflow / a Databricks dashboard.
 
 ## Expert subagents
 
 | Invoke | File | Role |
 | :--- | :--- | :--- |
-| `/medtech-lead-architect` | `.cursor/agents/medtech-lead-architect.md` | Systems architect — firmware, vision, Databricks, MLflow, Power BI |
+| `/medtech-lead-architect` | `.cursor/agents/medtech-lead-architect.md` | Systems architect — firmware, vision, Databricks, MLflow, Databricks dashboard |
 | `/cad-embedded-hardware` | `.cursor/agents/cad-embedded-hardware.md` | CAD / STL — OpenSCAD enclosures, carousel, latch, Nano/MG90S/LiPo housing |
 
 - Use **`/cad-embedded-hardware`** for all 3D-print, OpenSCAD, STL, fit/tolerance, and mechanical assembly work.
@@ -29,7 +29,7 @@ This repository builds an **Automated Pill Dispensing & Visual Medication Compli
 3. **Week 3** — Serial/BLE integration + JSON telemetry  
 4. **Week 4** — Databricks Bronze & Silver  
 5. **Week 5** — Gold + MLflow adherence risk  
-6. **Week 6** — Power BI, E2E test, docs  
+6. **Week 6** — Databricks dashboard, E2E test, docs  
 
 Canonical schedule and BOM: `docs/project-context.md`. Product brief: `project.md`. CAD guide: `cad/README.md`.
 

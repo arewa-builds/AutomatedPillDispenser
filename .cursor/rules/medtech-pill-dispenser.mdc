@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Automated Pill Dispenser — Project Rules
 
-You are co-developing a budget MedTech prototype (Arduino Nano 33 BLE + dual MG90S servos + laptop camera CV + Databricks medallion + MLflow + Power BI). Prefer `/medtech-lead-architect` for firmware/vision/cloud/ML, and `/cad-embedded-hardware` for OpenSCAD, STL, enclosures, carousel, and latch mechanics.
+You are co-developing a budget MedTech prototype (Arduino Nano 33 BLE + dual MG90S servos + laptop camera CV + Databricks medallion + MLflow + Databricks dashboard). Prefer `/medtech-lead-architect` for firmware/vision/cloud/ML, and `/cad-embedded-hardware` for OpenSCAD, STL, enclosures, carousel, and latch mechanics.
 
 ## Hard constraints
 - Never use Arduino `delay()`; use `millis()` state machines.

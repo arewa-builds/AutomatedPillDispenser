@@ -25,7 +25,7 @@
 | Python Ecosystem | Local Python 3.10+, OpenCV, MediaPipe, PySerial (Open-Source) | $0.00 |
 | Arduino IDE | Desktop C++ compiler and library manager | $0.00 |
 | Databricks Environment | Community Edition **or** Standard 14-day Free Trial + micro-VM fees | $0.00 – $15.00 |
-| Power BI Desktop | Free Desktop application | $0.00 |
+| Databricks dashboard | Included with the Databricks workspace. Reads `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`. | $0.00 |
 | **Subtotal Software/Cloud** | | **$0.00 – $15.00** |
 
 **Estimated Total Budget: $93.00 – $108.00 USD** (laptop-camera path can reduce hardware to ~$73).
@@ -66,9 +66,9 @@
 **Day 34:** Databricks alerts for High Adherence Risk.  
 **Milestone 5:** Model forecasting non-adherence from telemetry.
 
-### Week 6: BI Dashboard & Final Integration Testing
-**Focus:** Power BI, E2E tests, documentation.  
-**Days 35–37:** Power BI → Databricks SQL Warehouse / DirectQuery; clinical KPIs.  
+### Week 6: Databricks Dashboard & Final Integration Testing
+**Focus:** Databricks dashboard, E2E tests, documentation.  
+**Days 35–37:** Databricks dashboard on the SQL warehouse, over `pill_dispenser.dashboard_doses` and `pill_dispenser.gold_adherence_7d`; clinical KPIs.  
 **Days 38–40:** Full E2E (Hardware → Vision → Databricks → ML → Dashboard).  
 **Days 41–42:** Architecture diagrams, repo cleanup, build videos.  
 **Milestone 6:** Demo-ready cloud-connected MedTech prototype.
