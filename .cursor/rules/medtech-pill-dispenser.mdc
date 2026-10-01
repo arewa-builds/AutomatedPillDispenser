@@ -12,7 +12,7 @@ You are co-developing a budget MedTech prototype (Arduino Nano 33 BLE + dual MG9
 - Detach or idle servos after movement cycles.
 - Wrap serial, camera, and Spark I/O in `try/except` with structured logs.
 - Enforce explicit PySpark `StructType` schemas for JSON → DataFrame.
-- Prefer laptop camera index `0`; keep BOM near $73–$93 hardware.
+- Prefer laptop camera index `0`; keep the project cost in the $100–$150 range.
 - CAD parts must use parametric OpenSCAD under `cad/` with exact Nano / MG90S / LiPo tolerances.
 
 ## Delivery style
